@@ -328,41 +328,7 @@ const ActionBtn = styled.button`
   }
 `;
 
-const LayerToggles = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  background: #f1f5f9;
-  border-radius: 8px;
-`;
-
-const LayerToggleBtn = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  border: none;
-  background: ${({ $active }) => $active ? '#ffffff' : 'transparent'};
-  color: ${({ $active, $color }) => $active ? $color : '#94a3b8'};
-  cursor: pointer;
-  box-shadow: ${({ $active }) => $active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'};
-  transition: all 0.15s ease;
-  
-  &:hover {
-    color: ${({ $color }) => $color};
-  }
-  
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: ${({ $active, $color }) => $active ? $color : '#cbd5e1'};
-  }
-`;
+// LayerToggles and LayerToggleBtn removed - using ViewModeSelector instead
 
 const MainContent = styled.div`
   flex: 1;
@@ -611,14 +577,8 @@ const ResearchView = () => {
   // Active pattern for switching between primary/alternatives
   const [activePatternId, setActivePatternId] = useState('primary');
   
-  // Layer visibility toggles
-  const [layerVisibility, setLayerVisibility] = useState({
-    patterns: true,
-    levels: true,
-    baseLayer: true,
-    structure: false,
-    targets: true,
-  });
+  // Layer visibility now controlled by viewMode through layerVisibilityComputed
+  // Removed manual layerVisibility state to avoid duplication
   
   // Indicator selection state (max 2 overlays, max 2 panes)
   const [selectedOverlays, setSelectedOverlays] = useState(['ema_20', 'ema_50']);
@@ -1476,19 +1436,12 @@ const ResearchView = () => {
   const patternStyle = getLayerStyle('pattern_primary');
   const fibStyle = getLayerStyle('fib');
 
-  // Determine what to show based on view mode and layer toggles
-  const showPatterns = viewMode !== 'clean' && layerVisibility.patterns;
-  const showLevels = layerVisibility.levels;
-  const showStructure = layerVisibility.structure;
+  // Determine what to show based on view mode (unified - using layerVisibilityComputed only)
+  const showPatterns = viewMode !== 'clean' && layerVisibilityComputed.patterns;
+  const showLevels = layerVisibilityComputed.levels !== false;
+  const showStructure = layerVisibilityComputed.structure;
   const showIndicators = viewMode === 'manual';
-
-  // Toggle layer visibility
-  const toggleLayer = (layer) => {
-    setLayerVisibility(prev => ({
-      ...prev,
-      [layer]: !prev[layer]
-    }));
-  };
+  const showBaseLayer = viewMode !== 'minimal';
 
   return (
     <Container data-testid="research-view">
@@ -1556,33 +1509,7 @@ const ResearchView = () => {
             </ChartTypeBtn>
           </ChartTypeGroup>
 
-          {/* Layer Toggles */}
-          <LayerToggles>
-            <LayerToggleBtn 
-              $active={layerVisibility.baseLayer} 
-              $color="#22c55e"
-              onClick={() => toggleLayer('baseLayer')}
-              title="Show/Hide Base Layer (Levels + Trendlines)"
-            >
-              <span className="dot" /> Base
-            </LayerToggleBtn>
-            <LayerToggleBtn 
-              $active={layerVisibility.patterns} 
-              $color="#3b82f6"
-              onClick={() => toggleLayer('patterns')}
-              title="Show/Hide Patterns"
-            >
-              <span className="dot" /> Patterns
-            </LayerToggleBtn>
-            <LayerToggleBtn 
-              $active={layerVisibility.levels} 
-              $color="#05A584"
-              onClick={() => toggleLayer('levels')}
-              title="Show/Hide Levels"
-            >
-              <span className="dot" /> Levels
-            </LayerToggleBtn>
-          </LayerToggles>
+          {/* Layer Toggles removed - using ViewModeSelector below chart instead */}
         </ControlsLeft>
       </TopBar>
 
@@ -1627,10 +1554,10 @@ const ResearchView = () => {
             chainMap={chainMap}
             chartType={chartType}
             height={420}
-            showLevels={layerVisibility.levels}
-            showPattern={layerVisibility.patterns && layerVisibilityComputed.pattern_primary}
-            showBaseLayer={layerVisibility.baseLayer}
-            showStructure={true}
+            showLevels={showLevels}
+            showPattern={showPatterns && layerVisibilityComputed.pattern_primary}
+            showBaseLayer={showBaseLayer}
+            showStructure={showStructure}
             showTargets={false}
             showExecutionOverlay={execution?.valid || layerVisibilityComputed.trade_setup}
             // Market Mechanics toggles - controlled by visibility engine
