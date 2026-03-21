@@ -71,16 +71,24 @@ All 6 timeframes now generate unique technical analysis:
 - Added TF_CONFIG for 180D and 1Y with appropriate pivot_window settings
 - Dynamic MIN_CANDLES_MAP based on timeframe
 
-### Layer Control Unification - FIXED (2026-03-22)
-**Problem:** Duplicate layer toggle buttons - "Base/Patterns/Levels" in top bar AND "ViewModeSelector" below chart
-**Solution:** Removed top bar buttons, unified control through ViewModeSelector only
+### Overlay Control & Visual Noise Reduction - FIXED (2026-03-22)
+**Problem:** Multiple overlapping modals on chart (SHORT, PATTERN DETECTED, UNKNOWN/Bias, etc.) creating visual noise
 
-| Mode | Layers Shown |
+**Solution:**
+1. All overlays OFF by default (`showFibonacciOverlay`, `showPatternOverlay`, `showSetupOverlay`, `showTAOverlay` = false)
+2. User clicks to enable specific overlays
+3. Active buttons show green indicator dot
+4. New control panel design with sections: VIEW, INDICATORS, OVERLAYS
+
+**Overlay Hierarchy:**
+| Overlay | Controls |
 |---|---|
-| **Auto** | All layers based on context |
-| **Classic TA** | Indicators + Patterns + Fibonacci |
-| **Smart Money** | POI + Liquidity + CHOCH |
-| **Minimal** | Essential elements only |
+| **Fib** | Fibonacci retracement levels |
+| **Pattern** | PATTERN DETECTED card (type, bias, breakout, score) |
+| **Setup** | SHORT/LONG card (entry, stop, TP1, TP2) |
+| **TA** | Full TA analysis overlay |
+
+**Removed:** Duplicate Base/Patterns/Levels buttons from top bar
 
 ## Data Loaded
 - BTC: 5,692 daily candles
