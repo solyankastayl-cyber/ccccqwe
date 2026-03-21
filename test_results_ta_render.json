@@ -1,0 +1,190 @@
+{
+  "summary": {
+    "total_tests": 30,
+    "passed_tests": 30,
+    "success_rate": 100.0,
+    "timestamp": "2026-03-20T14:17:55.036631"
+  },
+  "detailed_results": [
+    {
+      "test": "TF_4H_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:50.986743"
+    },
+    {
+      "test": "TF_4H_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:50.987350"
+    },
+    {
+      "test": "TF_4H_pattern_reason",
+      "passed": true,
+      "details": "Reason: No pattern candidates detected",
+      "timestamp": "2026-03-20T14:17:50.987368"
+    },
+    {
+      "test": "TF_4H_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:50.987373"
+    },
+    {
+      "test": "TF_4H_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:50.987379"
+    },
+    {
+      "test": "TF_1D_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:51.211539"
+    },
+    {
+      "test": "TF_1D_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:51.212471"
+    },
+    {
+      "test": "TF_1D_pattern_reason",
+      "passed": true,
+      "details": "Reason: Found 1 candidates but none qualify (low score or invalid state)",
+      "timestamp": "2026-03-20T14:17:51.212494"
+    },
+    {
+      "test": "TF_1D_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:51.212500"
+    },
+    {
+      "test": "TF_1D_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:51.212507"
+    },
+    {
+      "test": "TF_7D_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:51.864065"
+    },
+    {
+      "test": "TF_7D_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:51.864950"
+    },
+    {
+      "test": "TF_7D_pattern_reason",
+      "passed": true,
+      "details": "Reason: Found 1 candidates but none qualify (low score or invalid state)",
+      "timestamp": "2026-03-20T14:17:51.864968"
+    },
+    {
+      "test": "TF_7D_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:51.864973"
+    },
+    {
+      "test": "TF_7D_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:51.864979"
+    },
+    {
+      "test": "TF_30D_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:52.672906"
+    },
+    {
+      "test": "TF_30D_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:52.673801"
+    },
+    {
+      "test": "TF_30D_pattern_reason",
+      "passed": true,
+      "details": "Reason: Found 1 candidates but none qualify (low score or invalid state)",
+      "timestamp": "2026-03-20T14:17:52.673824"
+    },
+    {
+      "test": "TF_30D_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:52.673829"
+    },
+    {
+      "test": "TF_30D_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:52.673835"
+    },
+    {
+      "test": "TF_180D_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:53.697871"
+    },
+    {
+      "test": "TF_180D_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:53.699211"
+    },
+    {
+      "test": "TF_180D_pattern_reason",
+      "passed": true,
+      "details": "Reason: Found 1 candidates but none qualify (low score or invalid state)",
+      "timestamp": "2026-03-20T14:17:53.699233"
+    },
+    {
+      "test": "TF_180D_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:53.699238"
+    },
+    {
+      "test": "TF_180D_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:53.699244"
+    },
+    {
+      "test": "TF_1Y_status",
+      "passed": true,
+      "details": "HTTP 200, response OK",
+      "timestamp": "2026-03-20T14:17:55.033721"
+    },
+    {
+      "test": "TF_1Y_structure",
+      "passed": true,
+      "details": "All 6 layers present",
+      "timestamp": "2026-03-20T14:17:55.035479"
+    },
+    {
+      "test": "TF_1Y_pattern_reason",
+      "passed": true,
+      "details": "Reason: Found 1 candidates but none qualify (low score or invalid state)",
+      "timestamp": "2026-03-20T14:17:55.035507"
+    },
+    {
+      "test": "TF_1Y_pattern_status",
+      "passed": true,
+      "details": "Status: no_active_figure",
+      "timestamp": "2026-03-20T14:17:55.035512"
+    },
+    {
+      "test": "TF_1Y_execution",
+      "passed": true,
+      "details": "Status: no_trade, Reason: unified setup invalid..., Detail: No confirmed trade setup...",
+      "timestamp": "2026-03-20T14:17:55.035529"
+    }
+  ]
+}
