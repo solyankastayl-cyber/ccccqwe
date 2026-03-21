@@ -11,7 +11,7 @@ import time
 
 def quick_mtf_test():
     """Quick test of MTF endpoint"""
-    base_url = "https://ta-module.preview.emergentagent.com"
+    base_url = "https://ta-engine-preview-1.preview.emergentagent.com"
     
     tests = [
         {

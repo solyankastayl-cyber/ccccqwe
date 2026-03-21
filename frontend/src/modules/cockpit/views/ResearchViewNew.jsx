@@ -1709,6 +1709,19 @@ const ResearchView = () => {
           
         </ChartSection>
         
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* OSCILLATOR PANES (RSI/MACD) — Directly below chart, resizable */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {setupData?.indicators?.panes?.length > 0 && (
+          <BottomSection style={{ marginTop: '4px' }}>
+            <IndicatorPanes 
+              indicators={setupData.indicators}
+              visiblePanes={['rsi', 'macd']}
+              paneHeight={85}
+            />
+          </BottomSection>
+        )}
+
 
         {/* ════════════════════════════════════════════════════════════════ */}
         {/* UNIFIED ANALYSIS BAR — Below chart, combines all context panels */}
@@ -1942,23 +1955,6 @@ const ResearchView = () => {
 
         {/* EXPLANATION PANEL — System Explanation (from Explanation Engine V1) */}
         <ExplanationPanel explanation={explanation} />
-
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* INDICATOR VISUALIZATION LAYER — Controlled by Visibility Engine */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {layerVisibilityComputed.indicators_panes && setupData?.indicators?.panes?.length > 0 && (
-          <BottomSection>
-            <IndicatorPanes 
-              indicators={setupData.indicators}
-              visiblePanes={
-                renderPlan && viewMode !== 'manual'
-                  ? (renderPlan.panes || []).slice(0, limits.panes)
-                  : selectedPanes.slice(0, limits.panes)
-              }
-              paneHeight={80}
-            />
-          </BottomSection>
-        )}
         
         {/* CONFLUENCE MATRIX — Hidden in minimal mode */}
         {/* Build confluence from taContext indicators for ConfluenceMatrix component */}

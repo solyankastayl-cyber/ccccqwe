@@ -8,7 +8,7 @@
   "results": [
     {
       "test": "TA Engine Status",
-      "url": "https://tech-analyzer-12.preview.emergentagent.com/api/ta-engine/status",
+      "url": "https://ta-engine-preview-1.preview.emergentagent.com/api/ta-engine/status",
       "method": "GET",
       "status_code": 200,
       "expected_status": 200,
@@ -30,7 +30,7 @@
     },
     {
       "test": "Pattern Registry (50+ patterns)",
-      "url": "https://tech-analyzer-12.preview.emergentagent.com/api/ta-engine/registry/patterns",
+      "url": "https://ta-engine-preview-1.preview.emergentagent.com/api/ta-engine/registry/patterns",
       "method": "GET",
       "status_code": 200,
       "expected_status": 200,
@@ -1069,7 +1069,7 @@
     },
     {
       "test": "Indicator Registry (30+ indicators)",
-      "url": "https://tech-analyzer-12.preview.emergentagent.com/api/ta-engine/registry/indicators",
+      "url": "https://ta-engine-preview-1.preview.emergentagent.com/api/ta-engine/registry/indicators",
       "method": "GET",
       "status_code": 200,
       "expected_status": 200,
@@ -1757,7 +1757,7 @@
     },
     {
       "test": "Render Plan V2 BTC (6 layers)",
-      "url": "https://tech-analyzer-12.preview.emergentagent.com/api/ta-engine/render-plan-v2/BTC?timeframe=1D",
+      "url": "https://ta-engine-preview-1.preview.emergentagent.com/api/ta-engine/render-plan-v2/BTC?timeframe=1D",
       "method": "GET",
       "status_code": 200,
       "expected_status": 200,
@@ -12760,7 +12760,7 @@
     },
     {
       "test": "Render Plan V2 ETH (6 layers)",
-      "url": "https://tech-analyzer-12.preview.emergentagent.com/api/ta-engine/render-plan-v2/ETH?timeframe=4H",
+      "url": "https://ta-engine-preview-1.preview.emergentagent.com/api/ta-engine/render-plan-v2/ETH?timeframe=4H",
       "method": "GET",
       "status_code": 200,
       "expected_status": 200,

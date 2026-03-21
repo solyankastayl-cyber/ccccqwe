@@ -23,7 +23,7 @@ from datetime import datetime
 class PatternEngineV2Tester:
     def __init__(self):
         # Use the public endpoint from frontend env
-        self.base_url = "https://ta-context-engine.preview.emergentagent.com"
+        self.base_url = "https://ta-engine-preview-1.preview.emergentagent.com"
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
