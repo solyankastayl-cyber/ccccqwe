@@ -44,6 +44,19 @@ TA Engine - Technical Analysis platform for crypto markets with multi-timeframe 
 - [x] MTF analysis working
 - [x] Pattern detection working
 
+### Deep Analysis Blocks - FIXED & WORKING (2026-03-21)
+- [x] **Detected Elements**: 37 elements - patterns, indicators, structure, levels  
+- [x] **Technical Summary**: Asset (BTCUSDT), Timeframe (4H/1D), Technical Bias, Confidence, Market Regime
+- [x] **Primary Setup**: Setup Type (uptrend/symmetrical triangle), Direction, Confluence Score
+- [x] **Market Structure**: HH×2, HL×1, LL×1 + resistance×2, support×1
+- [x] **Key Drivers**: RSI, MACD, ADX, PRICE_EMA_POSITION, SMA_STACK, ICHI
+- [x] **Conflicts/Risks**: properly displaying
+- [x] **Setup Breakdown**: textual explanation working
+- [x] **Pattern Detection**: Symmetrical Triangle at 69% confidence
+
+### Key Fix Applied
+- Fixed `unifiedSetup` object in `ResearchViewNew.jsx` to properly map backend data (indicators, structure, levels) to DeepAnalysisBlocks and PatternActivationLayer components
+
 ## Data Loaded
 - BTC: 5,692 daily candles
 - ETH: 1,495 daily candles
