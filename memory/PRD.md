@@ -71,6 +71,17 @@ All 6 timeframes now generate unique technical analysis:
 - Added TF_CONFIG for 180D and 1Y with appropriate pivot_window settings
 - Dynamic MIN_CANDLES_MAP based on timeframe
 
+### Layer Control Unification - FIXED (2026-03-22)
+**Problem:** Duplicate layer toggle buttons - "Base/Patterns/Levels" in top bar AND "ViewModeSelector" below chart
+**Solution:** Removed top bar buttons, unified control through ViewModeSelector only
+
+| Mode | Layers Shown |
+|---|---|
+| **Auto** | All layers based on context |
+| **Classic TA** | Indicators + Patterns + Fibonacci |
+| **Smart Money** | POI + Liquidity + CHOCH |
+| **Minimal** | Essential elements only |
+
 ## Data Loaded
 - BTC: 5,692 daily candles
 - ETH: 1,495 daily candles
