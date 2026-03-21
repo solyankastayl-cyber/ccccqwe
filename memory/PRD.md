@@ -88,7 +88,25 @@ All 6 timeframes now generate unique technical analysis:
 | **Setup** | SHORT/LONG card (entry, stop, TP1, TP2) |
 | **TA** | Full TA analysis overlay |
 
-**Removed:** Duplicate Base/Patterns/Levels buttons from top bar
+**Removed:** 
+- Duplicate Base/Patterns/Levels buttons from top bar
+- UNKNOWN/Bias:neutral badge from MarketStateRenderer
+
+### ViewMode System - FULLY FUNCTIONAL (2026-03-22)
+| Mode | What it shows |
+|---|---|
+| **Auto** | Everything from render_plan |
+| **Classic TA** | Indicators (EMA/RSI/MACD) + Patterns + Fibonacci |
+| **Smart Money** | POI + Liquidity + CHOCH + EQH/EQL + Sweeps |
+| **Minimal** | Only candles + structure (HH/HL/LL) + levels (R/S) |
+
+### Setup Overlay - FIXED
+- Added `valid: true` and `type: 'LONG'/'SHORT'` to buildTradeSetup
+- Setup card now displays: Entry, Stop, TP1, TP2, R:R ratio, Confidence
+
+### Indicator Selector - FIXED  
+- Now uses `selectedOverlays` for user control in all modes
+- User can select EMA_20, EMA_50, SMA, etc.
 
 ## Data Loaded
 - BTC: 5,692 daily candles
