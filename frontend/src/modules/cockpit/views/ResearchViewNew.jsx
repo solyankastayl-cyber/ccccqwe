@@ -1337,43 +1337,101 @@ const ResearchView = () => {
   ] : [];
   
   // Build unified setup object for all components
-  const unifiedSetup = setupData ? {
-    // Pattern as array (for PatternActivationLayer)
-    patterns: pattern ? [{
-      type: pattern.type,
-      confidence: pattern.confidence,
-      direction: setup?.direction,
-      points: pattern.points,
-    }] : [],
+  const unifiedSetup = React.useMemo(() => {
+    if (!setupData) return null;
     
-    // Single pattern object (for ResearchChart)
-    pattern: pattern,
+    const d = setupData.decision;
+    const rp = setupData.render_plan;
+    const indicators = setupData.indicator_result || setupData.ta_context?.indicators?.signals || [];
+    const structureState = setupData.structure_state || setupData.structure_context;
     
-    // Levels array
-    levels: levels,
+    // Build structure array from structure_state swings or render_plan structure
+    const buildStructureArray = () => {
+      const swings = rp?.structure?.swings || [];
+      if (swings.length > 0) {
+        return swings.map(s => ({ type: s.type, time: s.time, price: s.price }));
+      }
+      // Fallback to structure_state counts
+      if (structureState) {
+        const arr = [];
+        for (let i = 0; i < (structureState.hh_count || 0); i++) arr.push({ type: 'HH' });
+        for (let i = 0; i < (structureState.hl_count || 0); i++) arr.push({ type: 'HL' });
+        for (let i = 0; i < (structureState.lh_count || 0); i++) arr.push({ type: 'LH' });
+        for (let i = 0; i < (structureState.ll_count || 0); i++) arr.push({ type: 'LL' });
+        return arr;
+      }
+      return structureArray;
+    };
     
-    // Structure as array
-    structure: structureArray,
+    // Build indicators array from indicator_result
+    const buildIndicatorsArray = () => {
+      if (Array.isArray(indicators) && indicators.length > 0) {
+        return indicators.map(ind => ({
+          name: ind.name,
+          direction: ind.direction?.toLowerCase(),
+          signal_type: ind.signal_type,
+          strength: ind.strength,
+          description: ind.description,
+        }));
+      }
+      return [];
+    };
     
-    // Setup details
-    direction: setup?.direction,
-    confidence: setup?.confidence,
-    trigger: setup?.trigger,
-    invalidation: setup?.invalidation,
-    targets: setup?.targets || [],
+    // Derive bias and confidence from decision
+    const derivedBias = d?.bias || (pattern?.direction) || 'neutral';
+    const derivedConfidence = d?.confidence || pattern?.confidence || 0;
+    const derivedSetupType = pattern?.type || (rp?.market_state?.trend_direction) || 'analysis';
     
-    // Empty arrays for missing data (to avoid "No X detected")
-    indicators: [],
-    conflicts: [],
-    
-    // Market context
-    market_regime: structure?.trend,
-    asset: symbol,
-    timeframe: timeframe,
-  } : null;
+    return {
+      // Pattern as array (for PatternActivationLayer)
+      patterns: pattern ? [{
+        type: pattern.type,
+        confidence: pattern.confidence,
+        direction: pattern.direction || derivedBias,
+        points: pattern.points,
+      }] : [],
+      
+      // Single pattern object (for ResearchChart)
+      pattern: pattern,
+      
+      // Levels array - from render_plan or computed levels
+      levels: levels,
+      
+      // Structure as array with actual data
+      structure: buildStructureArray(),
+      
+      // Setup details from decision
+      setup_type: derivedSetupType,
+      direction: derivedBias,
+      confidence: derivedConfidence,
+      confluence_score: d?.confidence || 0,
+      trigger: setup?.trigger,
+      invalidation: setup?.invalidation,
+      targets: setup?.targets || [],
+      
+      // Indicators from API
+      indicators: buildIndicatorsArray(),
+      
+      // Conflicts/risks
+      conflicts: [],
+      
+      // Market context from decision and render_plan
+      market_regime: rp?.market_state?.trend_direction || structureState?.regime || d?.context || 'neutral',
+      asset: symbol,
+      timeframe: selectedTF,
+      current_price: setupData.current_price,
+      
+      // Additional fields for DeepAnalysisBlocks
+      primary_confluence: d ? {
+        score: d.confidence,
+        components: [d.bias, d.strength].filter(Boolean),
+      } : null,
+      explanation: d?.summary,
+    };
+  }, [setupData, pattern, levels, structureArray, setup, symbol, selectedTF]);
   
-  const technicalBias = setup?.direction || 'neutral';
-  const biasConfidence = setup?.confidence || 0;
+  const technicalBias = unifiedSetup?.direction || 'neutral';
+  const biasConfidence = unifiedSetup?.confidence || 0;
 
   // ═══════════════════════════════════════════════════════════════
   // GRAPH VISIBILITY ENGINE — Intelligent layer prioritization
