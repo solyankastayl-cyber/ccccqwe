@@ -332,6 +332,8 @@ export function buildTradeSetup(rp, confluence) {
   }
   
   return {
+    valid: true,  // Добавляем флаг valid для SetupOverlay
+    type: direction === 'long' ? 'LONG' : 'SHORT',
     direction,
     entry,
     stop,

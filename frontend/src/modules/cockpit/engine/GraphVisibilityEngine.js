@@ -106,6 +106,7 @@ export function computeVisibility(ctx, mode = 'auto', renderPlan = null) {
  * render_plan says: "show EMA, RSI, POI, Fib because THESE influenced the decision"
  */
 function computeFromRenderPlan(ctx, mode, renderPlan) {
+  // Start with all OFF by default for clarity
   const visible = {
     trade_setup: false,
     pattern_primary: false,
@@ -119,9 +120,14 @@ function computeFromRenderPlan(ctx, mode, renderPlan) {
     displacement: false,
     structure_labels: false,
     sweep_markers: false,
+    levels: true,      // Always show levels (support/resistance)
+    structure: true,   // Always show structure by default
+    patterns: false,
   };
   
-  // From render_plan
+  // ══════════════════════════════════════════════
+  // BASE: From render_plan flags
+  // ══════════════════════════════════════════════
   if (renderPlan.overlays?.length > 0)   visible.indicators_overlay = true;
   if (renderPlan.panes?.length > 0)      visible.indicators_panes = true;
   if (renderPlan.show_fib)               visible.fib = true;
@@ -130,41 +136,71 @@ function computeFromRenderPlan(ctx, mode, renderPlan) {
   if (renderPlan.show_choch)             visible.choch = true;
   if (renderPlan.show_displacement)      visible.displacement = true;
   
-  // ALWAYS show pattern if exists
+  // Pattern if exists
   if (ctx.pattern_primary?.type) {
     visible.pattern_primary = true;
+    visible.patterns = true;
   }
   
-  // ALWAYS show trade_setup if valid
+  // Trade setup if valid
   const hasValidSetup = ctx.setup?.primary?.valid || ctx.setup?.confidence > 0.7;
   if (hasValidSetup) {
     visible.trade_setup = true;
   }
   
   // ══════════════════════════════════════════════
-  // MODE OVERRIDES (on top of render_plan)
+  // MODE OVERRIDES - Each mode has distinct behavior
   // ══════════════════════════════════════════════
-  if (mode === 'classic') {
-    // Classic TA: boost indicators, suppress mechanics
+  if (mode === 'auto') {
+    // Auto: Show everything that exists in render_plan
+    // Already set above from render_plan flags
+    visible.structure = true;
+    visible.structure_labels = true;
+  } else if (mode === 'classic') {
+    // Classic TA: Indicators + Patterns + Fibonacci, NO Smart Money
     visible.indicators_overlay = true;
     visible.indicators_panes = true;
+    visible.fib = true;
+    visible.pattern_primary = ctx.pattern_primary?.type ? true : false;
+    visible.patterns = visible.pattern_primary;
+    visible.structure = true;
+    visible.structure_labels = true;
+    // OFF: Smart Money concepts
     visible.choch = false;
     visible.displacement = false;
     visible.sweep_markers = false;
+    visible.poi = false;
+    visible.liquidity = false;
   } else if (mode === 'smart') {
-    // Smart Money: boost mechanics, keep indicators minimal
+    // Smart Money: POI, Liquidity, CHOCH, Displacement
     visible.poi = true;
     visible.liquidity = true;
     visible.choch = true;
     visible.displacement = true;
+    visible.sweep_markers = true;
+    visible.structure = true;
+    visible.structure_labels = true;
+    // OFF: Traditional TA
+    visible.indicators_overlay = false;
+    visible.indicators_panes = false;
+    visible.fib = false;
   } else if (mode === 'minimal') {
-    // Minimal: only the essentials
+    // Minimal: Only price action + key levels
+    visible.structure = true;
+    visible.levels = true;
+    // OFF: Everything else
+    visible.pattern_primary = false;
+    visible.patterns = false;
+    visible.fib = false;
+    visible.poi = false;
+    visible.liquidity = false;
+    visible.indicators_overlay = false;
+    visible.indicators_panes = false;
     visible.choch = false;
     visible.displacement = false;
     visible.sweep_markers = false;
     visible.structure_labels = false;
-    visible.alternative_pattern = false;
-    // Keep: pattern, fib (if in plan), setup
+    visible.trade_setup = false;
   }
   
   return visible;

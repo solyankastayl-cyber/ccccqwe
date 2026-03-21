@@ -1602,16 +1602,12 @@ const ResearchView = () => {
             showNarrative={viewMode !== 'minimal'}
             decision={decision}
             // Indicator Overlays - filtered by selection and mode
-            // Indicator Overlays - driven by render_plan (brain) in auto mode
+            // Classic/Auto mode: show selected indicators + fallback to user selection
             indicatorOverlays={
               layerVisibilityComputed.indicators_overlay
                 ? (setupData?.indicators?.overlays || [])
                     .filter(o => {
-                      // In auto/smart/classic mode: use render_plan overlays
-                      if (renderPlan && viewMode !== 'manual') {
-                        return (renderPlan.overlays || []).includes(o.id);
-                      }
-                      // In manual mode: use user selection
+                      // ALWAYS use user selection (selectedOverlays) - gives user control
                       return selectedOverlays.includes(o.id);
                     })
                     .slice(0, limits.overlays)

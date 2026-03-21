@@ -64,16 +64,23 @@ export const MarketStateRenderer = ({ marketState }) => {
     wyckoff_phase,
   } = marketState;
 
+  // Hide if no valid trend data (avoids "UNKNOWN" badge)
+  const hasValidTrend = trend_direction && 
+    trend_direction !== 'unknown' && 
+    trend_direction !== 'neutral';
+
   return (
     <StateContainer data-testid="market-state-renderer">
-      {/* Trend */}
-      <StateBadge $type={trend_direction}>
-        <TrendIcon trend={trend_direction} />
-        <span>{trend_direction?.replace('_', ' ').toUpperCase()}</span>
-        {trend_strength && trend_strength !== 'no_trend' && (
-          <span style={{ opacity: 0.7 }}>({trend_strength})</span>
-        )}
-      </StateBadge>
+      {/* Trend - only if valid */}
+      {hasValidTrend && (
+        <StateBadge $type={trend_direction}>
+          <TrendIcon trend={trend_direction} />
+          <span>{trend_direction?.replace('_', ' ').toUpperCase()}</span>
+          {trend_strength && trend_strength !== 'no_trend' && (
+            <span style={{ opacity: 0.7 }}>({trend_strength})</span>
+          )}
+        </StateBadge>
+      )}
       
       {/* Volatility */}
       {volatility_regime && volatility_regime !== 'normal_volatility' && (
