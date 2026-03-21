@@ -474,11 +474,11 @@ const SubChartControls = styled.div`
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  margin-top: 8px;
+  margin: 0 0 8px 0;
   
   /* Overlay toggle section */
   .overlay-section {
@@ -1546,6 +1546,74 @@ const ResearchView = () => {
         </ControlsLeft>
       </TopBar>
 
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* CHART CONTROLS — View mode, Indicators, Overlays (moved above chart) */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {!loading && (
+        <SubChartControls data-testid="sub-chart-controls">
+          {/* View Mode Section */}
+          <span className="section-label">View</span>
+          <ViewModeSelector
+            mode={viewMode}
+            onChange={setViewMode}
+          />
+          
+          <ControlDivider />
+          
+          {/* Indicators Section */}
+          <span className="section-label">Indicators</span>
+          <IndicatorSelector
+            selectedOverlays={selectedOverlays}
+            selectedPanes={selectedPanes}
+            onOverlaysChange={setSelectedOverlays}
+            onPanesChange={setSelectedPanes}
+          />
+          
+          <ControlDivider />
+          
+          {/* Chart Overlays Section - OFF by default */}
+          <span className="section-label">Overlays</span>
+          <div className="overlay-section">
+            <CollapsibleButton
+              $active={showFibonacciOverlay}
+              onClick={() => setShowFibonacciOverlay(!showFibonacciOverlay)}
+              data-testid="fibonacci-toggle-btn"
+              title="Show Fibonacci retracement levels on chart"
+            >
+              <RefreshCw size={13} />
+              Fib
+            </CollapsibleButton>
+            <CollapsibleButton
+              $active={showPatternOverlay}
+              onClick={() => setShowPatternOverlay(!showPatternOverlay)}
+              data-testid="pattern-toggle-btn"
+              title="Show detected pattern info card on chart"
+            >
+              <Triangle size={13} />
+              Pattern
+            </CollapsibleButton>
+            <CollapsibleButton
+              $active={showSetupOverlay}
+              onClick={() => setShowSetupOverlay(!showSetupOverlay)}
+              data-testid="setup-toggle-btn"
+              title="Show trade setup info card on chart"
+            >
+              <Target size={13} />
+              Setup
+            </CollapsibleButton>
+            <CollapsibleButton
+              $active={showTAOverlay}
+              onClick={() => setShowTAOverlay(!showTAOverlay)}
+              data-testid="ta-overlay-toggle-btn"
+              title="Show full TA analysis overlay on chart"
+            >
+              <Layers size={13} />
+              TA
+            </CollapsibleButton>
+          </div>
+        </SubChartControls>
+      )}
+
       {/* Main Content */}
       <MainContent>
         {/* Error Banner */}
@@ -1641,71 +1709,6 @@ const ResearchView = () => {
           
         </ChartSection>
         
-        {/* Sub-chart controls: View mode + Indicators + Fibonacci + Pattern toggle buttons */}
-        {!loading && (
-          <SubChartControls data-testid="sub-chart-controls">
-            {/* View Mode Section */}
-            <span className="section-label">View</span>
-            <ViewModeSelector
-              mode={viewMode}
-              onChange={setViewMode}
-            />
-            
-            <ControlDivider />
-            
-            {/* Indicators Section */}
-            <span className="section-label">Indicators</span>
-            <IndicatorSelector
-              selectedOverlays={selectedOverlays}
-              selectedPanes={selectedPanes}
-              onOverlaysChange={setSelectedOverlays}
-              onPanesChange={setSelectedPanes}
-            />
-            
-            <ControlDivider />
-            
-            {/* Chart Overlays Section - OFF by default */}
-            <span className="section-label">Overlays</span>
-            <div className="overlay-section">
-              <CollapsibleButton
-                $active={showFibonacciOverlay}
-                onClick={() => setShowFibonacciOverlay(!showFibonacciOverlay)}
-                data-testid="fibonacci-toggle-btn"
-                title="Show Fibonacci retracement levels on chart"
-              >
-                <RefreshCw size={13} />
-                Fib
-              </CollapsibleButton>
-              <CollapsibleButton
-                $active={showPatternOverlay}
-                onClick={() => setShowPatternOverlay(!showPatternOverlay)}
-                data-testid="pattern-toggle-btn"
-                title="Show detected pattern info card on chart"
-              >
-                <Triangle size={13} />
-                Pattern
-              </CollapsibleButton>
-              <CollapsibleButton
-                $active={showSetupOverlay}
-                onClick={() => setShowSetupOverlay(!showSetupOverlay)}
-                data-testid="setup-toggle-btn"
-                title="Show trade setup info card on chart"
-              >
-                <Target size={13} />
-                Setup
-              </CollapsibleButton>
-              <CollapsibleButton
-                $active={showTAOverlay}
-                onClick={() => setShowTAOverlay(!showTAOverlay)}
-                data-testid="ta-overlay-toggle-btn"
-                title="Show full TA analysis overlay on chart"
-              >
-                <Layers size={13} />
-                TA
-              </CollapsibleButton>
-            </div>
-          </SubChartControls>
-        )}
 
         {/* ════════════════════════════════════════════════════════════════ */}
         {/* UNIFIED ANALYSIS BAR — Below chart, combines all context panels */}
