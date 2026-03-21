@@ -1,0 +1,78 @@
+{
+  "summary": "Completed testing of overlay functionality in Research View. Found significant issues with frontend implementation - overlay controls not accessible through current interface, but backend API working correctly with pattern detection.",
+  
+  "backend_issues": {
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Research View Navigation",
+        "issue": "Research View with overlay controls not accessible through current interface",
+        "selector": "[data-testid='research-view']",
+        "fix_priority": "CRITICAL"
+      },
+      {
+        "component": "Overlay Control Buttons",
+        "issue": "Expected overlay buttons (Fibonacci, Pattern, Setup, TA) not found in current interface",
+        "selector": "[data-testid='fibonacci-toggle-btn'], [data-testid='pattern-toggle-btn'], [data-testid='setup-toggle-btn'], [data-testid='ta-overlay-toggle-btn']",
+        "fix_priority": "CRITICAL"
+      },
+      {
+        "component": "Control Panel Sections",
+        "issue": "Expected control panel sections (VIEW, INDICATORS, OVERLAYS) not found",
+        "selector": "text='VIEW', text='INDICATORS', text='OVERLAYS'",
+        "fix_priority": "HIGH"
+      },
+      {
+        "component": "Timeframe Controls",
+        "issue": "1D timeframe button not found for pattern testing",
+        "selector": "[data-testid='tf-1D']",
+        "fix_priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Research View Access",
+        "issue": "Current interface shows Prediction view instead of Research View with overlay controls",
+        "affected_selectors": ["[data-testid='research-view']", "[data-testid='sub-chart-controls']"]
+      },
+      {
+        "flow": "URL Routing",
+        "issue": "/research URL returns 404 error and different page content",
+        "affected_selectors": ["Research page routing"]
+      }
+    ],
+    "design_issues": [
+      {
+        "flow": "Interface Mismatch",
+        "issue": "Current deployed interface does not match the ResearchViewNew.jsx code with overlay controls",
+        "affected_screen": ["Research View interface"]
+      }
+    ]
+  },
+  
+  "passed_tests": [
+    "✅ Backend API /api/ta-engine/mtf/BTC working correctly",
+    "✅ Backend returns symmetrical_triangle pattern data for 1D timeframe",
+    "✅ Backend provides comprehensive technical analysis data",
+    "✅ Navigation to Tech Analysis section working",
+    "✅ Page loading and basic interface functionality working"
+  ],
+  
+  "test_report_links": [],
+  
+  "action_item_for_main_agent": "CRITICAL: The Research View interface with overlay controls (ResearchViewNew.jsx) is not deployed or accessible. Current interface shows Prediction view instead. Need to:\n1. Deploy/fix routing to Research View with overlay controls\n2. Ensure overlay buttons (Fibonacci, Pattern, Setup, TA) are present with data-testids\n3. Implement control panel sections (VIEW, INDICATORS, OVERLAYS)\n4. Add timeframe controls for testing pattern detection\n5. Fix /research URL routing (currently returns 404)",
+  
+  "updated_files": [],
+  
+  "success_percentage": {
+    "frontend": "20% - Interface not accessible",
+    "backend": "100% - API working correctly"
+  },
+  
+  "should_call_test_agent_after_fix": "true",
+  "should_main_agent_test_itself": "false"
+}

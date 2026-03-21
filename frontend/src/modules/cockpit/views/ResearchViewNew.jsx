@@ -473,41 +473,73 @@ const SubChartControls = styled.div`
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 8px;
+  
+  /* Overlay toggle section */
+  .overlay-section {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f8fafc;
+    border-radius: 6px;
+  }
+  
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-right: 4px;
+  }
 `;
 
 const ControlDivider = styled.div`
   width: 1px;
-  height: 20px;
+  height: 24px;
   background: #e2e8f0;
-  margin: 0 4px;
+  margin: 0 8px;
 `;
 
 const CollapsibleButton = styled.button`
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 10px;
-  background: ${({ $active }) => $active ? '#0f172a' : 'transparent'};
-  border: none;
+  padding: 6px 12px;
+  background: ${({ $active }) => $active ? '#0f172a' : '#f8fafc'};
+  border: 1px solid ${({ $active }) => $active ? '#0f172a' : '#e2e8f0'};
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: ${({ $active }) => $active ? '#ffffff' : '#64748b'};
   cursor: pointer;
   transition: all 0.15s ease;
   
   &:hover {
-    color: ${({ $active }) => $active ? '#ffffff' : '#0f172a'};
-    background: ${({ $active }) => $active ? '#0f172a' : 'rgba(15, 23, 42, 0.05)'};
+    border-color: ${({ $active }) => $active ? '#1e293b' : '#cbd5e1'};
+    background: ${({ $active }) => $active ? '#1e293b' : '#f1f5f9'};
   }
   
   svg {
     width: 13px;
     height: 13px;
+    opacity: ${({ $active }) => $active ? 1 : 0.6};
+  }
+  
+  /* Status indicator dot */
+  &::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${({ $active }) => $active ? '#22c55e' : 'transparent'};
+    margin-left: 4px;
   }
 `;
 
@@ -555,15 +587,16 @@ const ResearchView = () => {
   // ═══════════════════════════════════════════════════════════════
   // TA OVERLAY STATE — moved from Chart Lab (RESEARCH EXCLUSIVE)
   // ═══════════════════════════════════════════════════════════════
-  const [showTAOverlay, setShowTAOverlay] = useState(true);
+  const [showTAOverlay, setShowTAOverlay] = useState(false);  // OFF by default - reduces noise
   
   // Hook into global render plan store for TA visualization
   const { renderPlan: globalRenderPlan, loading: renderPlanLoading, refresh: refreshRenderPlan } = useRenderPlan();
   
   // Collapsible panels state — toggles overlay visibility on chart
-  const [showFibonacciOverlay, setShowFibonacciOverlay] = useState(true);
-  const [showPatternOverlay, setShowPatternOverlay] = useState(true);
-  const [showSetupOverlay, setShowSetupOverlay] = useState(true);
+  // ALL OFF by default to reduce visual noise - user clicks to enable
+  const [showFibonacciOverlay, setShowFibonacciOverlay] = useState(false);
+  const [showPatternOverlay, setShowPatternOverlay] = useState(false);
+  const [showSetupOverlay, setShowSetupOverlay] = useState(false);
   
   // Data - NEW: MTF data structure
   const [tfMap, setTfMap] = useState({});
@@ -1615,57 +1648,66 @@ const ResearchView = () => {
         {/* Sub-chart controls: View mode + Indicators + Fibonacci + Pattern toggle buttons */}
         {!loading && (
           <SubChartControls data-testid="sub-chart-controls">
+            {/* View Mode Section */}
+            <span className="section-label">View</span>
             <ViewModeSelector
               mode={viewMode}
               onChange={setViewMode}
             />
+            
             <ControlDivider />
+            
+            {/* Indicators Section */}
+            <span className="section-label">Indicators</span>
             <IndicatorSelector
               selectedOverlays={selectedOverlays}
               selectedPanes={selectedPanes}
               onOverlaysChange={setSelectedOverlays}
               onPanesChange={setSelectedPanes}
             />
+            
             <ControlDivider />
-            <CollapsibleButton
-              $active={showFibonacciOverlay}
-              onClick={() => setShowFibonacciOverlay(!showFibonacciOverlay)}
-              data-testid="fibonacci-toggle-btn"
-            >
-              <RefreshCw size={13} />
-              Fibonacci
-            </CollapsibleButton>
-            <CollapsibleButton
-              $active={showPatternOverlay}
-              onClick={() => setShowPatternOverlay(!showPatternOverlay)}
-              data-testid="pattern-toggle-btn"
-            >
-              <Triangle size={13} />
-              Pattern
-            </CollapsibleButton>
-            <CollapsibleButton
-              $active={showSetupOverlay}
-              onClick={() => setShowSetupOverlay(!showSetupOverlay)}
-              data-testid="setup-toggle-btn"
-            >
-              <Target size={13} />
-              Setup
-            </CollapsibleButton>
-            <ControlDivider />
-            {/* TA OVERLAY TOGGLE — exclusive to Research */}
-            <CollapsibleButton
-              $active={showTAOverlay}
-              onClick={() => setShowTAOverlay(!showTAOverlay)}
-              data-testid="ta-overlay-toggle-btn"
-              style={{ 
-                background: showTAOverlay ? '#3b82f620' : '#fff', 
-                borderColor: showTAOverlay ? '#3b82f6' : '#e2e8f0', 
-                color: showTAOverlay ? '#3b82f6' : '#94a3b8' 
-              }}
-            >
-              <Layers size={13} />
-              TA Overlay
-            </CollapsibleButton>
+            
+            {/* Chart Overlays Section - OFF by default */}
+            <span className="section-label">Overlays</span>
+            <div className="overlay-section">
+              <CollapsibleButton
+                $active={showFibonacciOverlay}
+                onClick={() => setShowFibonacciOverlay(!showFibonacciOverlay)}
+                data-testid="fibonacci-toggle-btn"
+                title="Show Fibonacci retracement levels on chart"
+              >
+                <RefreshCw size={13} />
+                Fib
+              </CollapsibleButton>
+              <CollapsibleButton
+                $active={showPatternOverlay}
+                onClick={() => setShowPatternOverlay(!showPatternOverlay)}
+                data-testid="pattern-toggle-btn"
+                title="Show detected pattern info card on chart"
+              >
+                <Triangle size={13} />
+                Pattern
+              </CollapsibleButton>
+              <CollapsibleButton
+                $active={showSetupOverlay}
+                onClick={() => setShowSetupOverlay(!showSetupOverlay)}
+                data-testid="setup-toggle-btn"
+                title="Show trade setup info card on chart"
+              >
+                <Target size={13} />
+                Setup
+              </CollapsibleButton>
+              <CollapsibleButton
+                $active={showTAOverlay}
+                onClick={() => setShowTAOverlay(!showTAOverlay)}
+                data-testid="ta-overlay-toggle-btn"
+                title="Show full TA analysis overlay on chart"
+              >
+                <Layers size={13} />
+                TA
+              </CollapsibleButton>
+            </div>
           </SubChartControls>
         )}
 
