@@ -54,8 +54,22 @@ TA Engine - Technical Analysis platform for crypto markets with multi-timeframe 
 - [x] **Setup Breakdown**: textual explanation working
 - [x] **Pattern Detection**: Symmetrical Triangle at 69% confidence
 
-### Key Fix Applied
-- Fixed `unifiedSetup` object in `ResearchViewNew.jsx` to properly map backend data (indicators, structure, levels) to DeepAnalysisBlocks and PatternActivationLayer components
+### Multi-Timeframe (MTF) Analysis - FIXED & WORKING (2026-03-21)
+All 6 timeframes now generate unique technical analysis:
+
+| TF | Candles | Aggregation | Trend | Key Levels |
+|---|---|---|---|---|
+| **4H** | 200 | 6h native | uptrend | R@74K, R@76K, S@69K |
+| **1D** | 150 | 1d native | downtrend | S@60K, S@63K, R@74K |
+| **7D** | 65 | 7-day aggregated | downtrend | R@126K, S@81K, R@98K |
+| **30D** | 42 | 30-day aggregated | unknown | R@109K, R@126K |
+| **180D** | 12 | 180-day aggregated | unknown | L@15K, H@126K |
+| **1Y** | 11 | 365-day aggregated | unknown | H@69K, L@15K, R@126K |
+
+**Key Fixes Applied:**
+- Added `_aggregate_candles()` function for higher TFs
+- Added TF_CONFIG for 180D and 1Y with appropriate pivot_window settings
+- Dynamic MIN_CANDLES_MAP based on timeframe
 
 ## Data Loaded
 - BTC: 5,692 daily candles
