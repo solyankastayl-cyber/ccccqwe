@@ -114,20 +114,36 @@ TF_CONFIG = {
         "description": "Setup patterns"
     },
     "7D": {
-        "lookback": 400,
-        "pivot_window": 9,
-        "min_pivot_distance": 15,
-        "pattern_window": 250,
-        "candle_type": "1d",
-        "description": "Formation patterns"
+        "lookback": 65,        # ~65 weekly candles = ~1.2 years
+        "pivot_window": 2,      # Smaller for aggregated data
+        "min_pivot_distance": 2,
+        "pattern_window": 50,
+        "candle_type": "7d",
+        "description": "Weekly formations"
     },
     "30D": {
-        "lookback": 800,
-        "pivot_window": 15,
-        "min_pivot_distance": 30,
-        "pattern_window": 500,
-        "candle_type": "1d",
-        "description": "Structure patterns"
+        "lookback": 42,         # ~42 monthly candles = ~3.5 years
+        "pivot_window": 2,      # Very small for monthly
+        "min_pivot_distance": 1,
+        "pattern_window": 30,
+        "candle_type": "30d",
+        "description": "Monthly structure"
+    },
+    "180D": {
+        "lookback": 12,         # ~12 half-year candles = ~6 years
+        "pivot_window": 1,      # Minimal for 6-month
+        "min_pivot_distance": 1,
+        "pattern_window": 10,
+        "candle_type": "180d",
+        "description": "Macro cycles"
+    },
+    "1Y": {
+        "lookback": 11,         # ~11 yearly candles = ~11 years
+        "pivot_window": 1,      # Minimal for yearly
+        "min_pivot_distance": 1,
+        "pattern_window": 8,
+        "candle_type": "1Y",
+        "description": "Secular trends"
     },
 }
 
@@ -160,11 +176,24 @@ class PerTimeframeBuilder:
         
         config = TF_CONFIG.get(timeframe, TF_CONFIG["1D"])
         
+        # Minimum candles depends on timeframe
+        # Higher TFs like 180D and 1Y have limited historical data
+        MIN_CANDLES_MAP = {
+            "1H": 30,
+            "4H": 30,
+            "1D": 30,
+            "7D": 20,
+            "30D": 10,
+            "180D": 5,
+            "1Y": 5,
+        }
+        min_candles = MIN_CANDLES_MAP.get(timeframe.upper(), 30)
+        
         # Empty result template
         empty = self._empty_result(timeframe, symbol)
         
-        if len(candles) < 30:
-            print(f"[PerTF] Not enough candles ({len(candles)} < 30)")
+        if len(candles) < min_candles:
+            print(f"[PerTF] Not enough candles ({len(candles)} < {min_candles})")
             return empty
         
         current_price = float(candles[-1]["close"])
@@ -189,8 +218,12 @@ class PerTimeframeBuilder:
         ]
         
         if len(pivot_highs) < 2 or len(pivot_lows) < 2:
-            print(f"[PerTF] Not enough pivots")
-            return empty
+            print(f"[PerTF] Not enough pivots (highs={len(pivot_highs)}, lows={len(pivot_lows)})")
+            # For higher timeframes with limited data, proceed with available pivots
+            if timeframe.upper() in ("180D", "1Y") and (len(pivot_highs) >= 1 or len(pivot_lows) >= 1):
+                print(f"[PerTF] Proceeding with limited pivots for {timeframe}")
+            else:
+                return empty
         
         print(f"[PerTF] Building structure_state...")
         structure_state = structure_v2.build(

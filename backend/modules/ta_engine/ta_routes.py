@@ -55,6 +55,58 @@ def get_coinbase_provider():
     return CoinbaseAutoInit.get_instance()
 
 
+def _aggregate_candles(candles: List[Dict[str, Any]], period_days: int) -> List[Dict[str, Any]]:
+    """
+    Aggregate daily candles into higher timeframe candles.
+    
+    For example:
+    - period_days=7 -> weekly candles
+    - period_days=30 -> monthly candles
+    - period_days=180 -> 6-month candles
+    - period_days=365 -> yearly candles
+    
+    Each aggregated candle:
+    - open: first candle's open
+    - high: max high in period
+    - low: min low in period
+    - close: last candle's close
+    - volume: sum of volumes
+    - time: first candle's timestamp
+    """
+    if not candles or period_days <= 1:
+        return candles
+    
+    # Sort by time
+    sorted_candles = sorted(candles, key=lambda x: x['time'])
+    
+    aggregated = []
+    period_seconds = period_days * 24 * 60 * 60
+    
+    i = 0
+    while i < len(sorted_candles):
+        period_start = sorted_candles[i]['time']
+        period_end = period_start + period_seconds
+        
+        # Collect candles in this period
+        period_candles = []
+        while i < len(sorted_candles) and sorted_candles[i]['time'] < period_end:
+            period_candles.append(sorted_candles[i])
+            i += 1
+        
+        if period_candles:
+            agg_candle = {
+                'time': period_candles[0]['time'],
+                'open': period_candles[0]['open'],
+                'high': max(c['high'] for c in period_candles),
+                'low': min(c['low'] for c in period_candles),
+                'close': period_candles[-1]['close'],
+                'volume': sum(c.get('volume', 0) for c in period_candles),
+            }
+            aggregated.append(agg_candle)
+    
+    return aggregated
+
+
 # NOTE: Static routes MUST come before dynamic {symbol} routes
 
 @router.get("/status")
@@ -176,26 +228,40 @@ async def get_mtf_analysis(
         
         # TF to candle type mapping
         # Note: Coinbase doesn't support 4h, using 6h instead
+        # For higher TFs (7D, 30D, 180D, 1Y) we aggregate from daily candles
         tf_candle_map = {
             "1H": "1h",
             "4H": "6h",
             "1D": "1d",
-            "7D": "1d",
-            "30D": "1d",
+            "7D": "1d",      # Aggregate to weekly
+            "30D": "1d",     # Aggregate to monthly
+            "180D": "1d",    # Aggregate to 6-month
+            "1Y": "1d",      # Aggregate to yearly
         }
         
-        # Lookback config
+        # Lookback config (raw candles to fetch before aggregation)
         tf_lookback = {
             "1H": 168,
             "4H": 200,
             "1D": 150,
-            "7D": 400,
-            "30D": 800,
+            "7D": 400,       # 400 days -> ~57 weekly candles
+            "30D": 1200,     # 1200 days -> ~40 monthly candles
+            "180D": 2000,    # 2000 days -> ~11 six-month candles
+            "1Y": 3650,      # ~10 years of data -> ~10 yearly candles
+        }
+        
+        # Aggregation periods (in days) for higher timeframes
+        tf_aggregation = {
+            "7D": 7,
+            "30D": 30,
+            "180D": 180,
+            "1Y": 365,
         }
         
         for tf in tf_list:
             cb_tf = tf_candle_map.get(tf, "1d")
             lookback = tf_lookback.get(tf, 150)
+            aggregation_days = tf_aggregation.get(tf)
             
             try:
                 # Get candles for this timeframe
@@ -220,7 +286,13 @@ async def get_mtf_analysis(
                     })
                 
                 candles.sort(key=lambda x: x['time'])
-                candles = candles[-lookback:]
+                
+                # Aggregate candles for higher timeframes (7D, 30D, 180D, 1Y)
+                if aggregation_days and len(candles) > 0:
+                    candles = _aggregate_candles(candles, aggregation_days)
+                    print(f"[MTF] Aggregated {tf} to {len(candles)} candles (period={aggregation_days}d)")
+                else:
+                    candles = candles[-lookback:]
                 
                 if candles:
                     # Build full TA for this TF
