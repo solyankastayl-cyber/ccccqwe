@@ -1,175 +1,231 @@
 /**
- * IndicatorInsights Component V2
+ * IndicatorInsights Component V3
  * ==============================
- * RSI + MACD cards with proper market stage interpretation.
+ * RSI + MACD cards — concise, product-quality.
  * Click = toggle pane visibility.
- * Combined signal shown as action badge.
+ * 
+ * Design:
+ * - Compact cards with short labels
+ * - RSI 36 · Near oversold
+ * - Subtle summary below
+ * - No trading language
  */
 
 import React from 'react';
 import styled from 'styled-components';
-import { TrendingUp, TrendingDown, Minus, Activity, Target } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 // ============================================
 // STYLED COMPONENTS
 // ============================================
 
-const InsightsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 16px;
-  background: #ffffff;
-  border: 1px solid #eef1f5;
-  border-radius: 10px;
-  margin-top: 8px;
-`;
-
-const CardsRow = styled.div`
+const Container = styled.div`
   display: flex;
   gap: 12px;
+  padding: 8px 0;
 `;
 
-const InsightCard = styled.button`
+const Card = styled.button`
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
-  background: ${({ $active, $bgColor }) => $active ? $bgColor : '#f8fafc'};
-  border: 1px solid ${({ $active, $accentColor }) => $active ? $accentColor : '#e2e8f0'};
-  border-left: 3px solid ${({ $accentColor }) => $accentColor || '#64748b'};
-  border-radius: 8px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: ${({ $active }) => $active ? '#f0f9ff' : '#ffffff'};
+  border: 1px solid ${({ $active, $color }) => $active ? $color : '#e2e8f0'};
+  border-radius: 10px;
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
   
   &:hover {
-    background: ${({ $bgColor }) => $bgColor};
-    border-color: ${({ $accentColor }) => $accentColor};
+    border-color: ${({ $color }) => $color || '#cbd5e1'};
+    background: ${({ $color }) => $color ? `${$color}08` : '#f8fafc'};
   }
 `;
 
-const InsightHeader = styled.div`
+const IconBox = styled.div`
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  background: ${({ $color }) => $color ? `${$color}15` : '#f1f5f9'};
+  border-radius: 8px;
+  
+  svg {
+    width: 18px;
+    height: 18px;
+    color: ${({ $color }) => $color || '#64748b'};
+  }
 `;
 
-const InsightTitle = styled.div`
+const Content = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const MainLabel = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
   
   .name {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
-    color: #334155;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #0f172a;
   }
   
   .value {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    color: #64748b;
+    color: ${({ $color }) => $color || '#64748b'};
+  }
+  
+  .separator {
+    color: #cbd5e1;
+    font-size: 11px;
+  }
+  
+  .state {
+    font-size: 11px;
+    font-weight: 600;
+    color: ${({ $stateColor }) => $stateColor || '#64748b'};
+    text-transform: capitalize;
   }
 `;
 
-const StateBadge = styled.span`
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  background: ${({ $color }) => $color ? `${$color}20` : '#f1f5f9'};
-  color: ${({ $color }) => $color || '#64748b'};
-`;
-
-const InsightSummary = styled.p`
-  margin: 0;
+const Summary = styled.p`
+  margin: 4px 0 0 0;
   font-size: 11px;
   color: #64748b;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-const SignalBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: ${({ $bgColor }) => $bgColor || '#f8fafc'};
-  border-radius: 6px;
-  border: 1px solid ${({ $borderColor }) => $borderColor || '#e2e8f0'};
-`;
-
-const SignalLabel = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  
-  .icon {
-    display: flex;
-  }
-  
-  .text {
-    font-size: 12px;
-    font-weight: 700;
-    color: ${({ $color }) => $color || '#334155'};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-`;
-
-const SignalSummary = styled.span`
-  font-size: 11px;
-  color: #64748b;
+const StatusDot = styled.span`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${({ $active, $color }) => $active ? ($color || '#3b82f6') : '#e2e8f0'};
+  flex-shrink: 0;
 `;
 
 // ============================================
-// HELPERS
+// HELPERS — Interpretation Engine
 // ============================================
 
-const formatState = (state) => {
-  if (!state) return '';
-  return state.replace(/_/g, ' ').toUpperCase();
+/**
+ * RSI Interpretation — Market Stage (NOT direction)
+ * - < 30: Oversold (potential reversal UP)
+ * - 30-40: Near oversold (selling exhausting)
+ * - 40-60: Neutral
+ * - 60-70: Bullish (momentum up)
+ * - > 70: Overbought (potential pullback)
+ */
+const interpretRSI = (value, state) => {
+  const v = Math.round(value);
+  
+  if (v < 30) {
+    return {
+      label: `${v}`,
+      state: 'Oversold',
+      summary: 'Reversal watch zone',
+      stateColor: '#16a34a',
+      color: '#16a34a',
+    };
+  }
+  if (v < 40) {
+    return {
+      label: `${v}`,
+      state: 'Near oversold',
+      summary: 'Selling pressure weakening',
+      stateColor: '#22c55e',
+      color: '#22c55e',
+    };
+  }
+  if (v < 60) {
+    return {
+      label: `${v}`,
+      state: 'Neutral',
+      summary: 'No directional signal',
+      stateColor: '#64748b',
+      color: '#64748b',
+    };
+  }
+  if (v < 70) {
+    return {
+      label: `${v}`,
+      state: 'Bullish',
+      summary: 'Upward momentum',
+      stateColor: '#f59e0b',
+      color: '#f59e0b',
+    };
+  }
+  return {
+    label: `${v}`,
+    state: 'Overbought',
+    summary: 'Pullback watch zone',
+    stateColor: '#ef4444',
+    color: '#ef4444',
+  };
 };
 
-const getSignalConfig = (signal) => {
-  const configs = {
-    'WATCH_LONG': {
-      icon: <TrendingUp size={14} />,
-      color: '#22c55e',
-      bgColor: '#22c55e10',
-      borderColor: '#22c55e40'
-    },
-    'WATCH_SHORT': {
-      icon: <TrendingDown size={14} />,
-      color: '#ef4444',
-      bgColor: '#ef444410',
-      borderColor: '#ef444440'
-    },
-    'BULLISH_CONTINUATION': {
-      icon: <TrendingUp size={14} />,
-      color: '#22c55e',
-      bgColor: '#22c55e10',
-      borderColor: '#22c55e40'
-    },
-    'BEARISH_CONTINUATION': {
-      icon: <TrendingDown size={14} />,
-      color: '#ef4444',
-      bgColor: '#ef444410',
-      borderColor: '#ef444440'
-    },
-    'NO_TRADE': {
-      icon: <Minus size={14} />,
+/**
+ * MACD Interpretation — Momentum Regime
+ * Zone (above/below zero) + Direction (growing/fading)
+ */
+const interpretMACD = (macdData) => {
+  if (!macdData) {
+    return {
+      label: '',
+      state: 'No data',
+      summary: 'Insufficient data',
+      stateColor: '#64748b',
       color: '#64748b',
-      bgColor: '#f8fafc',
-      borderColor: '#e2e8f0'
+    };
+  }
+  
+  const { zone, momentum, state } = macdData;
+  
+  if (zone === 'above_zero') {
+    if (momentum === 'growing') {
+      return {
+        label: '',
+        state: 'Bullish',
+        summary: 'Momentum building',
+        stateColor: '#16a34a',
+        color: '#16a34a',
+      };
     }
+    return {
+      label: '',
+      state: 'Bullish fading',
+      summary: 'Momentum weakening',
+      stateColor: '#86efac',
+      color: '#86efac',
+    };
+  }
+  
+  // Below zero
+  if (momentum === 'growing') {
+    return {
+      label: '',
+      state: 'Bearish',
+      summary: 'Downward pressure',
+      stateColor: '#ef4444',
+      color: '#ef4444',
+    };
+  }
+  return {
+    label: '',
+    state: 'Bearish fading',
+    summary: 'Selling pressure easing',
+    stateColor: '#fca5a5',
+    color: '#fca5a5',
   };
-  return configs[signal] || configs['NO_TRADE'];
 };
 
 // ============================================
@@ -183,72 +239,69 @@ const IndicatorInsights = ({
 }) => {
   if (!insights) return null;
 
-  const { rsi, macd, combined } = insights;
-  const signalConfig = combined ? getSignalConfig(combined.signal) : null;
+  const { rsi, macd } = insights;
+  
+  // Interpret RSI
+  const rsiInterp = rsi ? interpretRSI(rsi.value, rsi.state) : null;
+  
+  // Interpret MACD
+  const macdInterp = macd ? interpretMACD(macd) : null;
 
   return (
-    <InsightsContainer data-testid="indicator-insights">
-      {/* RSI + MACD Cards */}
-      <CardsRow>
-        {rsi && (
-          <InsightCard 
-            $active={activeIndicators.rsi}
-            $bgColor={`${rsi.color}10`}
-            $accentColor={rsi.color}
-            onClick={() => onToggle?.('rsi')}
-            data-testid="rsi-insight"
-          >
-            <InsightHeader>
-              <InsightTitle>
-                <Activity size={14} color={rsi.color} />
-                <span className="name">RSI</span>
-                <span className="value">{rsi.value}</span>
-              </InsightTitle>
-              <StateBadge $color={rsi.color}>
-                {formatState(rsi.state)}
-              </StateBadge>
-            </InsightHeader>
-            <InsightSummary>{rsi.summary}</InsightSummary>
-          </InsightCard>
-        )}
-
-        {macd && (
-          <InsightCard 
-            $active={activeIndicators.macd}
-            $bgColor={`${macd.color}10`}
-            $accentColor={macd.color}
-            onClick={() => onToggle?.('macd')}
-            data-testid="macd-insight"
-          >
-            <InsightHeader>
-              <InsightTitle>
-                <Activity size={14} color={macd.color} />
-                <span className="name">MACD</span>
-              </InsightTitle>
-              <StateBadge $color={macd.color}>
-                {formatState(macd.state)}
-              </StateBadge>
-            </InsightHeader>
-            <InsightSummary>{macd.summary}</InsightSummary>
-          </InsightCard>
-        )}
-      </CardsRow>
-
-      {/* Combined Signal */}
-      {combined && signalConfig && (
-        <SignalBar 
-          $bgColor={signalConfig.bgColor}
-          $borderColor={signalConfig.borderColor}
-          data-testid="combined-signal"
+    <Container data-testid="indicator-insights">
+      {/* RSI Card */}
+      {rsi && rsiInterp && (
+        <Card 
+          $active={activeIndicators.rsi}
+          $color={rsiInterp.color}
+          onClick={() => onToggle?.('rsi')}
+          data-testid="rsi-card"
         >
-          <SignalLabel $color={signalConfig.color}>
-            <span className="icon">{signalConfig.icon}</span>
-            <span className="text">{combined.signal.replace(/_/g, ' ')}</span>
-          </SignalLabel>
-          <SignalSummary>{combined.summary}</SignalSummary>
-        </SignalBar>
+          <IconBox $color={rsiInterp.color}>
+            <Activity />
+          </IconBox>
+          <Content>
+            <MainLabel $color={rsiInterp.color} $stateColor={rsiInterp.stateColor}>
+              <span className="name">RSI</span>
+              <span className="value">{rsiInterp.label}</span>
+              <span className="separator">·</span>
+              <span className="state">{rsiInterp.state}</span>
+            </MainLabel>
+            <Summary>{rsiInterp.summary}</Summary>
+          </Content>
+          <StatusDot $active={activeIndicators.rsi} $color={rsiInterp.color} />
+        </Card>
       )}
-    </InsightsContainer>
+
+      {/* MACD Card */}
+      {macd && macdInterp && (
+        <Card 
+          $active={activeIndicators.macd}
+          $color={macdInterp.color}
+          onClick={() => onToggle?.('macd')}
+          data-testid="macd-card"
+        >
+          <IconBox $color={macdInterp.color}>
+            {macdInterp.state.includes('Bullish') ? (
+              <TrendingUp />
+            ) : macdInterp.state.includes('Bearish') ? (
+              <TrendingDown />
+            ) : (
+              <Minus />
+            )}
+          </IconBox>
+          <Content>
+            <MainLabel $color={macdInterp.color} $stateColor={macdInterp.stateColor}>
+              <span className="name">MACD</span>
+              <span className="separator">·</span>
+              <span className="state">{macdInterp.state}</span>
+            </MainLabel>
+            <Summary>{macdInterp.summary}</Summary>
+          </Content>
+          <StatusDot $active={activeIndicators.macd} $color={macdInterp.color} />
+        </Card>
+      )}
+    </Container>
   );
 };
 

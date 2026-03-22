@@ -1,56 +1,74 @@
 # Technical Analysis Module - PRD
 
 ## Original Problem Statement
-Подними проект из репозитория https://github.com/solyankastayl-cyber/ccccq. Работаем только с модулем теханализа. Реализовать функционал "Save Idea" — сохранение прогноза с возможностью обновления и отслеживания.
+Подними проект из репозитория https://github.com/solyankastayl-cyber/ccccq. Работаем только с модулем теханализа. 
+1. Реализовать функционал "Save Idea" — сохранение прогноза с возможностью обновления и отслеживания.
+2. Полный аудит индикаторов — 144 индикатора в системе
+3. UI полировка — семантика RSI/MACD, research-язык вместо trading-языка
 
 ## Architecture
-- **Backend**: FastAPI + MongoDB (modules/ta_engine/ideas/)
+- **Backend**: FastAPI + MongoDB (modules/ta_engine/, modules/exchange_intelligence/, modules/microstructure_intelligence_v2/)
 - **Frontend**: React + styled-components (modules/cockpit/)
-- **Key Files**:
-  - Backend: idea_routes.py, idea_service.py, models.py, repository.py
-  - Frontend: IdeasPanel.jsx, HypothesesView.jsx, TechAnalysisModule.jsx, setupService.js
-
-## Core Requirements
-1. ✅ Save trading idea with technical analysis snapshot
-2. ✅ Update idea (create new version with fresh analysis)
-3. ✅ Validate idea predictions against market outcome
-4. ✅ View idea timeline (versions + validations)
-5. ✅ List and filter saved ideas
-6. ✅ Delete ideas
+- **Key Modules**:
+  - TA Engine: 38 classic technical indicators
+  - Exchange Intelligence: 31 exchange/derivatives indicators
+  - Microstructure: 23 orderbook/pressure indicators
+  - Macro Context: 15 macroeconomic indicators
+  - Capital Flow: 14 rotation indicators
+  - Regime Intelligence: 8 market regime indicators
+  - Patterns/Structure: 15 pattern detection indicators
 
 ## What's Been Implemented (March 22, 2026)
-### Backend
-- POST /api/ta/ideas - Create idea
-- GET /api/ta/ideas - List ideas with filters
-- GET /api/ta/ideas/{id} - Get idea details
-- POST /api/ta/ideas/{id}/update - Update with new version
-- POST /api/ta/ideas/{id}/validate - Validate predictions
-- GET /api/ta/ideas/{id}/timeline - Timeline view
-- DELETE /api/ta/ideas/{id} - Delete idea
 
-### Frontend
-- IdeasPanel component (list, expand, update, validate, delete)
-- Integration into HypothesesView (sidebar panel)
-- Save Idea button in TechAnalysisModule header
-- Toast notifications for user feedback
-- setupService extended with Ideas API methods
+### Session 1: Save Idea Feature
+- POST /api/ta/ideas - Create idea
+- GET /api/ta/ideas - List ideas
+- POST /api/ta/ideas/{id}/update - Update version
+- POST /api/ta/ideas/{id}/validate - Validate
+- GET /api/ta/ideas/{id}/timeline - Timeline
+- IdeasPanel component in HypothesesView
+
+### Session 2: Indicator Audit
+- Full audit of 144 indicators across all modules
+- Created INDICATORS_FULL_AUDIT.md
+- Identified 19 TA indicators needing implementation
+- All Exchange/Microstructure/Macro indicators functional
+
+### Session 3: UI Polish (P1)
+- IndicatorInsights V3: RSI/MACD cards with proper interpretation
+  - RSI 37 · Near Oversold → "Selling pressure weakening"
+  - MACD · Bearish Fading → "Selling pressure easing"
+- Market Context: Research-oriented language
+- Technical Setup: "Setup Quality" instead of "Tradeability"
+- Key insight line: "Resistance at X defines upside risk"
 
 ## Testing Results
-- Backend: 100% (8/8 tests passed)
-- Frontend: 100% (6/6 features tested)
-
-## User Personas
-- Traders using technical analysis for market predictions
-- Portfolio managers tracking prediction accuracy
+- Save Idea: 100% (all API endpoints working)
+- UI: RSI/MACD cards display correctly
+- Market Context/Technical Setup blocks render
 
 ## Backlog (P1/P2 Features)
-- P1: Tags filtering in IdeasPanel
-- P1: Notes editing for ideas
-- P2: Export ideas to CSV/PDF
-- P2: Share ideas with team
-- P2: Historical accuracy analytics dashboard
+
+### P1: Remaining UI Polish
+- [ ] P2: Визуальная иерархия — график главный
+- [ ] P3: Empty states для блоков без данных
+- [ ] P4: Синхронизация выводов между блоками
+
+### P1: Missing TA Indicators (19)
+- VWMA, HMA, Pivot Points, Fibonacci Retracement
+- Stochastic RSI, MFI
+- ROC, TRIX
+- Volume bars, A/D Line, CMF
+- BB Width, Historical Volatility
+- DMI (+DI/-DI), Aroon
+
+### P2: Pattern Visualization
+- Liquidity Zones rendering
+- FVG rendering  
+- Order Block rendering
 
 ## Next Tasks
-1. Implement tags filtering UI
-2. Add notes editing in expanded view
-3. Accuracy tracking visualization
+1. Implement remaining TA indicators
+2. Complete UI hierarchy polish
+3. Empty states for all blocks
+4. Story line chain improvement

@@ -1818,7 +1818,7 @@ const ResearchView = () => {
                 </div>
               </div>
               
-              {/* Summary text */}
+              {/* Summary text — Research language */}
               {decision.summary && (
                 <div style={{
                   marginTop: '12px',
@@ -1827,8 +1827,18 @@ const ResearchView = () => {
                   borderRadius: '8px',
                   fontSize: '12px',
                   color: '#475569',
+                  lineHeight: '1.5',
                 }}>
-                  {decision.summary}
+                  {/* Transform trading language to research language */}
+                  {decision.summary
+                    .replace(/watch long/gi, 'bullish conditions developing')
+                    .replace(/watch short/gi, 'bearish conditions developing')
+                    .replace(/look for long entries/gi, 'upside momentum forming')
+                    .replace(/look for short entries/gi, 'downside pressure')
+                    .replace(/no clear action/gi, 'No clear directional signal')
+                    .replace(/observe and wait/gi, 'Structure remains mixed')
+                    .replace(/tradeability/gi, 'setup quality')
+                  }
                 </div>
               )}
             </div>
@@ -1901,14 +1911,14 @@ const ResearchView = () => {
                 </div>
               </div>
               
-              {/* Tradeability Badge */}
+              {/* Setup Quality Badge */}
               <div style={{
                 marginTop: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Tradeability</span>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Setup Quality</span>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: '600',
@@ -1923,6 +1933,39 @@ const ResearchView = () => {
                   {(decision.tradeability || 'low').toUpperCase()}
                 </span>
               </div>
+              
+              {/* Key Insight */}
+              {levels?.length > 0 && (
+                <div style={{
+                  marginTop: '10px',
+                  padding: '8px 10px',
+                  background: '#f0f9ff',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  color: '#0369a1',
+                  fontWeight: '500',
+                }}>
+                  {(() => {
+                    const resistances = levels?.filter(l => l.type === 'resistance') || [];
+                    const supports = levels?.filter(l => l.type === 'support') || [];
+                    const currentPrice = setupData?.current_price || 0;
+                    
+                    if (resistances.length > 0 && currentPrice) {
+                      const nearestR = resistances.reduce((a, b) => 
+                        Math.abs(b.price - currentPrice) < Math.abs(a.price - currentPrice) ? b : a
+                      );
+                      return `Resistance at ${Math.round(nearestR.price)} defines upside risk`;
+                    }
+                    if (supports.length > 0 && currentPrice) {
+                      const nearestS = supports.reduce((a, b) => 
+                        Math.abs(b.price - currentPrice) < Math.abs(a.price - currentPrice) ? b : a
+                      );
+                      return `Support at ${Math.round(nearestS.price)} defines downside risk`;
+                    }
+                    return 'Structure and levels being analyzed';
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         )}
