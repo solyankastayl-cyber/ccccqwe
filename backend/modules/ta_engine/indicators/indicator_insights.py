@@ -1,63 +1,38 @@
 """
-Indicator Insights Engine
-=========================
-Transforms raw indicator values into meaningful interpretations.
+Indicator Insights Engine V2
+============================
+RSI + MACD → market stage + actionable signal.
 
-For Research view, users need to understand:
-- What the indicator state means
-- What bias it suggests
-- How strong the signal is
-- One-line summary
+RSI = market stage (NOT direction)
+- oversold: potential reversal UP
+- near_oversold: selling pressure exhausting
+- neutral: no signal
+- bullish: market rising
+- overbought: potential pullback
 
-Supported indicators:
-- RSI: oversold/overbought states, momentum direction
-- MACD: crossovers, momentum building/fading
-- ADX: trend strength (future)
-- Volume/OBV: confirmation (future)
+MACD = momentum regime
+- below_zero + growing: bearish acceleration
+- below_zero + fading: bearish weakening
+- above_zero + growing: bullish acceleration
+- above_zero + fading: bullish weakening
+
+Combined Signal:
+- WATCH LONG: RSI near_oversold/oversold + MACD below + fading
+- WATCH SHORT: RSI overbought + MACD above + fading
+- BEARISH CONTINUATION: MACD below + growing
+- BULLISH CONTINUATION: MACD above + growing
+- NO TRADE: no edge
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
-from enum import Enum
-
-
-class SignalBias(str, Enum):
-    BULLISH = "bullish"
-    BEARISH = "bearish"
-    NEUTRAL = "neutral"
-    BULLISH_WEAKENING = "bullish_weakening"
-    BEARISH_WEAKENING = "bearish_weakening"
-
-
-class SignalStrength(str, Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
 
 
 @dataclass
 class RSIInsight:
-    """RSI interpretation with state, bias, and summary."""
     value: float
-    state: str  # oversold, near_oversold, neutral, bullish_pressure, overbought
-    bias: str   # bullish, bearish, neutral, bullish_weakening, bearish_weakening
-    strength: str  # high, medium, low
-    summary: str
-    color: str  # For UI rendering
-    
-    def to_dict(self) -> Dict:
-        return asdict(self)
-
-
-@dataclass
-class MACDInsight:
-    """MACD interpretation with state, bias, and summary."""
-    macd_value: float
-    signal_value: float
-    histogram: float
-    state: str  # bullish_crossover, bearish_crossover, bullish_momentum_building, bearish_momentum_fading, neutral
-    bias: str
-    strength: str
+    state: str      # oversold, near_oversold, neutral, bullish, overbought
+    bias: str       # bullish, bearish_weakening, neutral, bullish_weakening, bearish
     summary: str
     color: str
     
@@ -66,10 +41,35 @@ class MACDInsight:
 
 
 @dataclass
+class MACDInsight:
+    macd_value: float
+    signal_value: float
+    histogram: float
+    zone: str       # above_zero, below_zero
+    momentum: str   # growing, fading
+    state: str      # bullish_growing, bullish_fading, bearish_growing, bearish_fading
+    summary: str
+    color: str
+    
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+
+@dataclass
+class CombinedSignal:
+    signal: str     # WATCH_LONG, WATCH_SHORT, BEARISH_CONTINUATION, BULLISH_CONTINUATION, NO_TRADE
+    confidence: str # high, medium, low
+    summary: str
+    
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+
+@dataclass
 class IndicatorInsights:
-    """Container for all indicator insights."""
     rsi: Optional[RSIInsight] = None
     macd: Optional[MACDInsight] = None
+    combined: Optional[CombinedSignal] = None
     
     def to_dict(self) -> Dict:
         result = {}
@@ -77,408 +77,200 @@ class IndicatorInsights:
             result["rsi"] = self.rsi.to_dict()
         if self.macd:
             result["macd"] = self.macd.to_dict()
+        if self.combined:
+            result["combined"] = self.combined.to_dict()
         return result
 
 
 class IndicatorInsightsEngine:
     """
-    Transforms raw indicator data into meaningful insights.
-    
-    RSI States:
-    - 0-30: oversold
-    - 30-40: near_oversold  
-    - 40-60: neutral
-    - 60-70: bullish_pressure
-    - 70+: overbought
-    
-    MACD States:
-    - bullish_crossover: MACD crosses above signal
-    - bearish_crossover: MACD crosses below signal
-    - bullish_momentum_building: histogram increasing (positive territory)
-    - bearish_momentum_fading: histogram decreasing (negative but rising)
-    - neutral: weak momentum, no clear direction
+    RSI + MACD → market context + decision
     """
     
-    def __init__(self):
-        self.rsi_thresholds = {
-            "oversold": 30,
-            "near_oversold": 40,
-            "neutral_low": 45,
-            "neutral_high": 55,
-            "bullish_pressure": 60,
-            "overbought": 70
-        }
-    
-    def analyze(
-        self,
-        panes: List[Dict],
-        lookback: int = 5
-    ) -> IndicatorInsights:
-        """
-        Analyze indicator panes and generate insights.
-        
-        Args:
-            panes: List of indicator pane data from indicator_visualization
-            lookback: Number of periods to analyze for trend/momentum
-        
-        Returns:
-            IndicatorInsights with RSI and MACD interpretations
-        """
+    def analyze(self, panes: List[Dict], lookback: int = 5) -> IndicatorInsights:
         insights = IndicatorInsights()
         
         for pane in panes:
             pane_id = pane.get("id", "").lower()
-            
             if pane_id == "rsi":
-                insights.rsi = self._analyze_rsi(pane, lookback)
+                insights.rsi = self._analyze_rsi(pane)
             elif pane_id == "macd":
-                insights.macd = self._analyze_macd(pane, lookback)
+                insights.macd = self._analyze_macd(pane)
+        
+        # Combined signal from RSI + MACD
+        if insights.rsi and insights.macd:
+            insights.combined = self._get_combined_signal(insights.rsi, insights.macd)
         
         return insights
     
-    def _analyze_rsi(self, pane: Dict, lookback: int = 5) -> Optional[RSIInsight]:
-        """Analyze RSI and return insight."""
+    def _analyze_rsi(self, pane: Dict) -> Optional[RSIInsight]:
         data = pane.get("data", [])
-        if not data or len(data) < lookback:
+        if not data:
             return None
         
-        # Get current and recent values
-        current_value = data[-1].get("value")
-        if current_value is None:
+        value = data[-1].get("value")
+        if value is None:
             return None
+        value = float(value)
         
-        current_value = float(current_value)
-        recent_values = [d.get("value", 0) for d in data[-lookback:]]
-        
-        # Determine state based on value
-        state = self._get_rsi_state(current_value)
-        
-        # Determine direction/momentum
-        avg_change = sum(recent_values[i] - recent_values[i-1] for i in range(1, len(recent_values))) / (len(recent_values) - 1)
-        is_rising = avg_change > 0.5
-        is_falling = avg_change < -0.5
-        
-        # Determine bias and summary
-        bias, summary, strength = self._get_rsi_interpretation(
-            current_value, state, is_rising, is_falling
-        )
-        
-        # Color based on state
-        color = self._get_rsi_color(state)
+        # RSI state = market stage
+        if value < 30:
+            state = "oversold"
+            bias = "bullish"  # potential reversal UP
+            summary = "Oversold — potential reversal zone"
+            color = "#22c55e"  # green
+        elif value < 40:
+            state = "near_oversold"
+            bias = "bearish_weakening"
+            summary = "Near oversold — selling pressure exhausting"
+            color = "#86efac"  # light green
+        elif value < 60:
+            state = "neutral"
+            bias = "neutral"
+            summary = "Neutral — no clear signal"
+            color = "#64748b"  # gray
+        elif value < 70:
+            state = "bullish"
+            bias = "bullish"
+            summary = "Bullish pressure — momentum up"
+            color = "#fbbf24"  # amber
+        else:
+            state = "overbought"
+            bias = "bearish"  # potential pullback
+            summary = "Overbought — potential pullback zone"
+            color = "#ef4444"  # red
         
         return RSIInsight(
-            value=round(current_value, 2),
+            value=round(value, 2),
             state=state,
             bias=bias,
-            strength=strength,
             summary=summary,
             color=color
         )
     
-    def _get_rsi_state(self, value: float) -> str:
-        """Classify RSI value into state."""
-        if value <= 30:
-            return "oversold"
-        elif value <= 40:
-            return "near_oversold"
-        elif value <= 60:
-            return "neutral"
-        elif value <= 70:
-            return "bullish_pressure"
-        else:
-            return "overbought"
-    
-    def _get_rsi_interpretation(
-        self, 
-        value: float, 
-        state: str, 
-        is_rising: bool, 
-        is_falling: bool
-    ) -> tuple[str, str, str]:
-        """Get bias, summary and strength for RSI."""
-        
-        if state == "oversold":
-            if is_rising:
-                return (
-                    "bullish",
-                    "RSI oversold and rising — potential reversal forming.",
-                    "high"
-                )
-            else:
-                return (
-                    "bearish",
-                    "RSI in oversold territory — extreme selling pressure.",
-                    "medium"
-                )
-        
-        elif state == "near_oversold":
-            if is_rising:
-                return (
-                    "bearish_weakening",
-                    "RSI near oversold, momentum weakening — watch for bounce.",
-                    "medium"
-                )
-            else:
-                return (
-                    "bearish",
-                    "RSI approaching oversold — downside momentum continues.",
-                    "medium"
-                )
-        
-        elif state == "neutral":
-            if is_rising:
-                return (
-                    "neutral",
-                    "RSI neutral, slight bullish tilt — no strong signal.",
-                    "low"
-                )
-            elif is_falling:
-                return (
-                    "neutral",
-                    "RSI neutral, slight bearish tilt — watching for direction.",
-                    "low"
-                )
-            else:
-                return (
-                    "neutral",
-                    "RSI in neutral zone — no clear momentum bias.",
-                    "low"
-                )
-        
-        elif state == "bullish_pressure":
-            if is_rising:
-                return (
-                    "bullish",
-                    "RSI showing bullish pressure — momentum building.",
-                    "medium"
-                )
-            else:
-                return (
-                    "bullish_weakening",
-                    "RSI in bullish zone but momentum fading.",
-                    "low"
-                )
-        
-        else:  # overbought
-            if is_falling:
-                return (
-                    "bearish",
-                    "RSI overbought and falling — potential reversal.",
-                    "high"
-                )
-            else:
-                return (
-                    "bullish",
-                    "RSI overbought — strong buying but stretched.",
-                    "medium"
-                )
-    
-    def _get_rsi_color(self, state: str) -> str:
-        """Get color for RSI state visualization."""
-        colors = {
-            "oversold": "#22c55e",      # Green - potential buy
-            "near_oversold": "#86efac",  # Light green
-            "neutral": "#64748b",        # Gray
-            "bullish_pressure": "#fbbf24", # Amber
-            "overbought": "#ef4444"      # Red - potential sell
-        }
-        return colors.get(state, "#64748b")
-    
-    def _analyze_macd(self, pane: Dict, lookback: int = 5) -> Optional[MACDInsight]:
-        """Analyze MACD with proper multi-factor classification."""
+    def _analyze_macd(self, pane: Dict) -> Optional[MACDInsight]:
         data = pane.get("data", [])
         extra_lines = pane.get("extra_lines", [])
         
-        if not data or len(data) < lookback:
+        if not data or len(data) < 2:
             return None
         
-        # Get MACD line values
         macd_value = data[-1].get("value")
-        macd_prev = data[-2].get("value") if len(data) >= 2 else None
         if macd_value is None:
             return None
         macd_value = float(macd_value)
         
-        # Get signal line and histogram from extra_lines
-        signal_data = None
-        histogram_data = None
-        for line in extra_lines or []:
-            line_id = (line.get("id") or line.get("name") or "").lower()
-            if "signal" in line_id:
-                signal_data = line.get("data", [])
-            elif "histogram" in line_id or "hist" in line_id:
-                histogram_data = line.get("data", [])
-        
-        # Get signal value
+        # Get signal and histogram
         signal_value = 0
-        signal_prev = 0
-        if signal_data and len(signal_data) > 0:
-            signal_value = float(signal_data[-1].get("value", 0) or 0)
-            if len(signal_data) >= 2:
-                signal_prev = float(signal_data[-2].get("value", 0) or 0)
+        histogram = 0
+        histogram_prev = 0
         
-        # Get histogram values (current and previous for momentum)
-        histogram = macd_value - signal_value
-        histogram_prev = (float(macd_prev) - signal_prev) if macd_prev is not None else 0
+        for line in extra_lines or []:
+            name = (line.get("id") or line.get("name") or "").lower()
+            line_data = line.get("data", [])
+            
+            if "signal" in name and line_data:
+                signal_value = float(line_data[-1].get("value", 0) or 0)
+            elif "hist" in name and len(line_data) >= 2:
+                histogram = float(line_data[-1].get("value", 0) or 0)
+                histogram_prev = float(line_data[-2].get("value", 0) or 0)
         
-        if histogram_data and len(histogram_data) >= 2:
-            histogram = float(histogram_data[-1].get("value", 0) or 0)
-            histogram_prev = float(histogram_data[-2].get("value", 0) or 0)
+        # If no histogram data, calculate from MACD - signal
+        if histogram == 0:
+            histogram = macd_value - signal_value
+            if len(data) >= 2:
+                macd_prev = float(data[-2].get("value", 0) or 0)
+                histogram_prev = macd_prev - signal_value
         
-        # Multi-factor classification
-        state, bias, strength, summary, color = self._classify_macd(
-            macd_value, signal_value, histogram, histogram_prev
-        )
+        # MACD zone
+        zone = "above_zero" if macd_value > 0 else "below_zero"
+        
+        # Momentum direction (histogram growing or fading)
+        momentum = "growing" if abs(histogram) > abs(histogram_prev) else "fading"
+        
+        # State and interpretation
+        if zone == "above_zero":
+            if momentum == "growing":
+                state = "bullish_growing"
+                summary = "Bullish — momentum building"
+                color = "#22c55e"
+            else:
+                state = "bullish_fading"
+                summary = "Bullish fading — watch for reversal"
+                color = "#86efac"
+        else:
+            if momentum == "growing":
+                state = "bearish_growing"
+                summary = "Bearish — momentum building"
+                color = "#ef4444"
+            else:
+                state = "bearish_fading"
+                summary = "Bearish fading — selling pressure easing"
+                color = "#fca5a5"
         
         return MACDInsight(
             macd_value=round(macd_value, 2),
             signal_value=round(signal_value, 2),
             histogram=round(histogram, 2),
+            zone=zone,
+            momentum=momentum,
             state=state,
-            bias=bias,
-            strength=strength,
             summary=summary,
             color=color
         )
     
-    def _classify_macd(
-        self,
-        macd_value: float,
-        signal_value: float,
-        histogram: float,
-        histogram_prev: float
-    ) -> tuple[str, str, str, str, str]:
+    def _get_combined_signal(self, rsi: RSIInsight, macd: MACDInsight) -> CombinedSignal:
         """
-        Classify MACD based on 3 factors:
-        1. Position relative to zero
-        2. MACD line vs signal line
-        3. Histogram dynamics (expanding/shrinking)
+        RSI + MACD → actionable signal
         """
-        # Factor 1: Position relative to zero
-        below_zero = macd_value < 0
+        rsi_state = rsi.state
+        macd_zone = macd.zone
+        momentum = macd.momentum
         
-        # Factor 2: MACD line vs signal
-        above_signal = macd_value > signal_value
-        
-        # Factor 3: Histogram dynamics
-        # Calculate percentage change to avoid false signals on small values
-        if histogram_prev != 0:
-            hist_change_pct = (abs(histogram) - abs(histogram_prev)) / abs(histogram_prev)
-        else:
-            hist_change_pct = 0
-        
-        hist_growing = hist_change_pct > 0.15  # 15% threshold for "growing"
-        hist_shrinking = hist_change_pct < -0.15  # 15% threshold for "shrinking"
-        hist_stable = not hist_growing and not hist_shrinking
-        
-        # Threshold for "small" histogram (weak momentum)
-        hist_small = abs(histogram) < 100
-        
-        # Classification logic
-        
-        # NEUTRAL: very small histogram, no clear momentum
-        if hist_small and abs(macd_value) < 200:
-            return (
-                "neutral",
-                "neutral",
-                "low",
-                "MACD near zero — no clear momentum.",
-                "#64748b"
+        # WATCH LONG: RSI oversold/near_oversold + MACD below + fading
+        if rsi_state in ("oversold", "near_oversold") and macd_zone == "below_zero" and momentum == "fading":
+            return CombinedSignal(
+                signal="WATCH_LONG",
+                confidence="high" if rsi_state == "oversold" else "medium",
+                summary="Oversold + bearish momentum fading — watch for long entry"
             )
         
-        # BULLISH cases
-        if not below_zero:
-            if above_signal and hist_growing:
-                return (
-                    "bullish_strong",
-                    "bullish",
-                    "high",
-                    "MACD bullish — momentum building.",
-                    "#22c55e"
-                )
-            elif hist_shrinking:
-                return (
-                    "bullish_weak",
-                    "bullish_weakening",
-                    "low",
-                    "MACD positive but momentum fading.",
-                    "#86efac"
-                )
-            else:
-                return (
-                    "bullish",
-                    "bullish",
-                    "medium",
-                    "MACD above zero — bullish regime.",
-                    "#22c55e"
-                )
+        # WATCH SHORT: RSI overbought + MACD above + fading
+        if rsi_state == "overbought" and macd_zone == "above_zero" and momentum == "fading":
+            return CombinedSignal(
+                signal="WATCH_SHORT",
+                confidence="high",
+                summary="Overbought + bullish momentum fading — watch for short entry"
+            )
         
-        # BEARISH cases
-        if below_zero:
-            if not above_signal and hist_growing:
-                return (
-                    "bearish_strong",
-                    "bearish",
-                    "high",
-                    "MACD bearish — downside momentum building.",
-                    "#ef4444"
-                )
-            elif hist_shrinking:
-                return (
-                    "bearish_weak",
-                    "bearish_weakening",
-                    "low",
-                    "MACD negative but momentum weakening.",
-                    "#fca5a5"
-                )
-            elif hist_stable:
-                return (
-                    "bearish",
-                    "bearish",
-                    "medium",
-                    "MACD below zero — bearish regime.",
-                    "#f87171"
-                )
-            else:
-                return (
-                    "bearish",
-                    "bearish",
-                    "medium",
-                    "MACD below zero — bearish regime.",
-                    "#f87171"
-                )
+        # BEARISH CONTINUATION: MACD below + growing (regardless of RSI unless oversold)
+        if macd_zone == "below_zero" and momentum == "growing" and rsi_state not in ("oversold",):
+            return CombinedSignal(
+                signal="BEARISH_CONTINUATION",
+                confidence="medium",
+                summary="Bearish momentum building — downtrend continues"
+            )
         
-        # Fallback
-        return (
-            "neutral",
-            "neutral",
-            "low",
-            "MACD unclear — wait for direction.",
-            "#64748b"
+        # BULLISH CONTINUATION: MACD above + growing (regardless of RSI unless overbought)
+        if macd_zone == "above_zero" and momentum == "growing" and rsi_state not in ("overbought",):
+            return CombinedSignal(
+                signal="BULLISH_CONTINUATION",
+                confidence="medium",
+                summary="Bullish momentum building — uptrend continues"
+            )
+        
+        # NO TRADE: no clear edge
+        return CombinedSignal(
+            signal="NO_TRADE",
+            confidence="low",
+            summary="No clear setup — wait for better conditions"
         )
-    
-    def _get_macd_color(self, state: str) -> str:
-        """Get color for MACD state visualization."""
-        colors = {
-            "bullish_crossover": "#22c55e",
-            "bullish_momentum_building": "#22c55e",
-            "bullish_momentum_fading": "#86efac",
-            "bullish_weak": "#a7f3d0",
-            "bearish_crossover": "#ef4444",
-            "bearish_momentum_building": "#ef4444",
-            "bearish_momentum_fading": "#fca5a5",
-            "bearish_weak": "#fecaca",
-            "neutral": "#64748b"
-        }
-        return colors.get(state, "#64748b")
 
 
-# Singleton instance
+# Singleton
 _insights_engine: Optional[IndicatorInsightsEngine] = None
 
-
 def get_indicator_insights_engine() -> IndicatorInsightsEngine:
-    """Get singleton instance of IndicatorInsightsEngine."""
     global _insights_engine
     if _insights_engine is None:
         _insights_engine = IndicatorInsightsEngine()
