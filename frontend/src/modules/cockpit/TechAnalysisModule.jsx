@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Brain, BarChart2,
   TrendingUp, TrendingDown, Zap,
-  RefreshCw, Share2, Camera, Bookmark
+  RefreshCw, Share2, Camera, Bookmark, Check, Loader2
 } from 'lucide-react';
 import styled from 'styled-components';
 import CockpitAPI from './services/api';
 import { MarketProvider, useMarket } from '../../store/marketStore';
+import setupService from '../../services/setupService';
 
 // ============================================
 // STYLED COMPONENTS - Clean Platform Integration
@@ -120,7 +121,7 @@ const ActionBtn = styled.button`
   background: #ffffff;
   color: #64748b;
   
-  &:hover {
+  &:hover:not(:disabled) {
     background: #f8fafc;
     color: #0f172a;
     border-color: #cbd5e1;
@@ -130,7 +131,7 @@ const ActionBtn = styled.button`
     background: #3b82f6;
     color: #ffffff;
     border-color: #3b82f6;
-    &:hover { background: #2563eb; border-color: #2563eb; }
+    &:hover:not(:disabled) { background: #2563eb; border-color: #2563eb; }
   }
   
   &:disabled {
@@ -139,6 +140,15 @@ const ActionBtn = styled.button`
   }
   
   svg { width: 14px; height: 14px; }
+  
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 `;
 
 const TabButton = styled.button`
@@ -203,7 +213,7 @@ const USER_TABS = [
 
 const TechAnalysisInner = () => {
   const [activeTab, setActiveTab] = useState('research');
-  const { symbol, researchState, loading } = useMarket();
+  const { symbol, researchState, loading, timeframe } = useMarket();
   
   const [systemStatus, setSystemStatus] = useState({
     health: 'HEALTHY',
@@ -212,6 +222,33 @@ const TechAnalysisInner = () => {
     dailyPnL: 2340.20,
     latency: 45
   });
+  
+  // Save Idea state
+  const [savingIdea, setSavingIdea] = useState(false);
+  const [savedIdea, setSavedIdea] = useState(null);
+  const [ideaToast, setIdeaToast] = useState(null);
+
+  // Handle Save Idea
+  const handleSaveIdea = useCallback(async () => {
+    if (savingIdea) return;
+    
+    try {
+      setSavingIdea(true);
+      const result = await setupService.createIdea(symbol, timeframe || '4H');
+      
+      if (result.ok) {
+        setSavedIdea(result.idea);
+        setIdeaToast(`Idea saved: ${result.idea.idea_id}`);
+        setTimeout(() => setIdeaToast(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save idea:', err);
+      setIdeaToast('Failed to save idea');
+      setTimeout(() => setIdeaToast(null), 3000);
+    } finally {
+      setSavingIdea(false);
+    }
+  }, [symbol, timeframe, savingIdea]);
 
   useEffect(() => {
     // Fetch system status
@@ -272,10 +309,29 @@ const TechAnalysisInner = () => {
           <ActionBtn data-testid="header-screenshot-btn">
             <Camera /> Screenshot
           </ActionBtn>
-          <ActionBtn className="primary" data-testid="header-save-idea-btn">
-            <Bookmark /> Save Idea
+          <ActionBtn className="primary" onClick={handleSaveIdea} disabled={savingIdea} data-testid="header-save-idea-btn">
+            {savingIdea ? <Loader2 className="animate-spin" /> : savedIdea ? <Check /> : <Bookmark />}
+            {savingIdea ? 'Saving...' : savedIdea ? 'Saved' : 'Save Idea'}
           </ActionBtn>
         </ActionsGroup>
+        
+        {/* Toast notification */}
+        {ideaToast && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '12px 20px',
+            background: '#0f172a',
+            color: '#fff',
+            borderRadius: '8px',
+            fontSize: '13px',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }}>
+            {ideaToast}
+          </div>
+        )}
       </TabsNav>
       
       {/* Main Content */}
