@@ -285,54 +285,50 @@ class IndicatorInsightsEngine:
         return colors.get(state, "#64748b")
     
     def _analyze_macd(self, pane: Dict, lookback: int = 5) -> Optional[MACDInsight]:
-        """Analyze MACD and return insight."""
+        """Analyze MACD with proper multi-factor classification."""
         data = pane.get("data", [])
         extra_lines = pane.get("extra_lines", [])
         
         if not data or len(data) < lookback:
             return None
         
-        # Get MACD line
+        # Get MACD line values
         macd_value = data[-1].get("value")
+        macd_prev = data[-2].get("value") if len(data) >= 2 else None
         if macd_value is None:
             return None
         macd_value = float(macd_value)
         
-        # Get signal line
+        # Get signal line and histogram from extra_lines
         signal_data = None
         histogram_data = None
         for line in extra_lines or []:
-            line_id = line.get("id", "").lower()
+            line_id = (line.get("id") or line.get("name") or "").lower()
             if "signal" in line_id:
                 signal_data = line.get("data", [])
-            elif "histogram" in line_id:
+            elif "histogram" in line_id or "hist" in line_id:
                 histogram_data = line.get("data", [])
         
+        # Get signal value
         signal_value = 0
+        signal_prev = 0
         if signal_data and len(signal_data) > 0:
             signal_value = float(signal_data[-1].get("value", 0) or 0)
+            if len(signal_data) >= 2:
+                signal_prev = float(signal_data[-2].get("value", 0) or 0)
         
-        # Get histogram values
+        # Get histogram values (current and previous for momentum)
         histogram = macd_value - signal_value
-        recent_histograms = []
-        if histogram_data and len(histogram_data) >= lookback:
-            recent_histograms = [
-                float(d.get("value", 0) or 0) 
-                for d in histogram_data[-lookback:]
-            ]
-        elif len(data) >= lookback and signal_data and len(signal_data) >= lookback:
-            # Calculate histogram from MACD and signal
-            for i in range(-lookback, 0):
-                m = float(data[i].get("value", 0) or 0)
-                s = float(signal_data[i].get("value", 0) or 0) if i < len(signal_data) else 0
-                recent_histograms.append(m - s)
+        histogram_prev = (float(macd_prev) - signal_prev) if macd_prev is not None else 0
         
-        # Analyze state
-        state, bias, strength, summary = self._get_macd_interpretation(
-            macd_value, signal_value, histogram, recent_histograms
+        if histogram_data and len(histogram_data) >= 2:
+            histogram = float(histogram_data[-1].get("value", 0) or 0)
+            histogram_prev = float(histogram_data[-2].get("value", 0) or 0)
+        
+        # Multi-factor classification
+        state, bias, strength, summary, color = self._classify_macd(
+            macd_value, signal_value, histogram, histogram_prev
         )
-        
-        color = self._get_macd_color(state)
         
         return MACDInsight(
             macd_value=round(macd_value, 2),
@@ -345,102 +341,121 @@ class IndicatorInsightsEngine:
             color=color
         )
     
-    def _get_macd_interpretation(
+    def _classify_macd(
         self,
-        macd: float,
-        signal: float,
+        macd_value: float,
+        signal_value: float,
         histogram: float,
-        recent_histograms: List[float]
-    ) -> tuple[str, str, str, str]:
-        """Interpret MACD values and return state, bias, strength, summary."""
+        histogram_prev: float
+    ) -> tuple[str, str, str, str, str]:
+        """
+        Classify MACD based on 3 factors:
+        1. Position relative to zero
+        2. MACD line vs signal line
+        3. Histogram dynamics (expanding/shrinking)
+        """
+        # Factor 1: Position relative to zero
+        below_zero = macd_value < 0
         
-        # Check for crossovers
-        if len(recent_histograms) >= 2:
-            prev_hist = recent_histograms[-2]
-            
-            # Bullish crossover: histogram goes from negative to positive
-            if prev_hist < 0 and histogram > 0:
+        # Factor 2: MACD line vs signal
+        above_signal = macd_value > signal_value
+        
+        # Factor 3: Histogram dynamics
+        # Calculate percentage change to avoid false signals on small values
+        if histogram_prev != 0:
+            hist_change_pct = (abs(histogram) - abs(histogram_prev)) / abs(histogram_prev)
+        else:
+            hist_change_pct = 0
+        
+        hist_growing = hist_change_pct > 0.15  # 15% threshold for "growing"
+        hist_shrinking = hist_change_pct < -0.15  # 15% threshold for "shrinking"
+        hist_stable = not hist_growing and not hist_shrinking
+        
+        # Threshold for "small" histogram (weak momentum)
+        hist_small = abs(histogram) < 100
+        
+        # Classification logic
+        
+        # NEUTRAL: very small histogram, no clear momentum
+        if hist_small and abs(macd_value) < 200:
+            return (
+                "neutral",
+                "neutral",
+                "low",
+                "MACD near zero — no clear momentum.",
+                "#64748b"
+            )
+        
+        # BULLISH cases
+        if not below_zero:
+            if above_signal and hist_growing:
                 return (
-                    "bullish_crossover",
+                    "bullish_strong",
                     "bullish",
                     "high",
-                    "MACD bullish crossover — momentum shifting to buyers."
+                    "MACD bullish — momentum building.",
+                    "#22c55e"
                 )
-            
-            # Bearish crossover: histogram goes from positive to negative
-            if prev_hist > 0 and histogram < 0:
+            elif hist_shrinking:
                 return (
-                    "bearish_crossover",
+                    "bullish_weak",
+                    "bullish_weakening",
+                    "low",
+                    "MACD positive but momentum fading.",
+                    "#86efac"
+                )
+            else:
+                return (
+                    "bullish",
+                    "bullish",
+                    "medium",
+                    "MACD above zero — bullish regime.",
+                    "#22c55e"
+                )
+        
+        # BEARISH cases
+        if below_zero:
+            if not above_signal and hist_growing:
+                return (
+                    "bearish_strong",
                     "bearish",
                     "high",
-                    "MACD bearish crossover — momentum shifting to sellers."
+                    "MACD bearish — downside momentum building.",
+                    "#ef4444"
+                )
+            elif hist_shrinking:
+                return (
+                    "bearish_weak",
+                    "bearish_weakening",
+                    "low",
+                    "MACD negative but momentum weakening.",
+                    "#fca5a5"
+                )
+            elif hist_stable:
+                return (
+                    "bearish",
+                    "bearish",
+                    "medium",
+                    "MACD below zero — bearish regime.",
+                    "#f87171"
+                )
+            else:
+                return (
+                    "bearish",
+                    "bearish",
+                    "medium",
+                    "MACD below zero — bearish regime.",
+                    "#f87171"
                 )
         
-        # Check momentum direction
-        if len(recent_histograms) >= 3:
-            avg_change = sum(
-                recent_histograms[i] - recent_histograms[i-1] 
-                for i in range(1, len(recent_histograms))
-            ) / (len(recent_histograms) - 1)
-            
-            # In positive territory
-            if histogram > 0:
-                if avg_change > 0:
-                    return (
-                        "bullish_momentum_building",
-                        "bullish",
-                        "medium",
-                        "MACD positive, momentum building — bullish continuation."
-                    )
-                else:
-                    return (
-                        "bullish_momentum_fading",
-                        "bullish_weakening",
-                        "low",
-                        "MACD positive but momentum fading — watch for reversal."
-                    )
-            
-            # In negative territory
-            elif histogram < 0:
-                if avg_change < 0:
-                    return (
-                        "bearish_momentum_building",
-                        "bearish",
-                        "medium",
-                        "MACD negative, momentum building — bearish continuation."
-                    )
-                else:
-                    return (
-                        "bearish_momentum_fading",
-                        "bearish_weakening",
-                        "medium",
-                        "MACD negative but momentum fading — selling pressure easing."
-                    )
-        
-        # Neutral / weak momentum
-        if abs(histogram) < abs(macd) * 0.1:
-            return (
-                "neutral",
-                "neutral",
-                "low",
-                "MACD showing no clear momentum — wait for direction."
-            )
-        
-        # Default based on histogram sign
-        if histogram > 0:
-            return (
-                "bullish_weak",
-                "neutral",
-                "low",
-                "MACD slightly positive — weak bullish bias."
-            )
-        else:
-            return (
-                "bearish_weak",
-                "neutral",
-                "low",
-                "MACD slightly negative — weak bearish bias."
-            )
+        # Fallback
+        return (
+            "neutral",
+            "neutral",
+            "low",
+            "MACD unclear — wait for direction.",
+            "#64748b"
+        )
     
     def _get_macd_color(self, state: str) -> str:
         """Get color for MACD state visualization."""
