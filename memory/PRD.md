@@ -6,53 +6,74 @@
 Пользователь работает **только** с модулем теханализа (Research view). Требования:
 1. Поднять проект (bootstrap, frontend, backend, Coinbase adapter)
 2. Воссоздать функционал RSI и MACD индикаторов под графиком
+3. **Показывать интерпретацию индикаторов, а не просто сырые данные**
 
 ## Architecture
 
 ```
 /app/
-├── backend/         # FastAPI backend
-│   ├── modules/
-│   │   ├── ta_engine/      # Technical Analysis core logic
-│   │   └── broker_adapters/ # Exchange adapters (Coinbase)
-│   ├── bootstrap.py
-│   └── server.py
-└── frontend/        # React frontend
-    └── src/
-        └── modules/
-            └── cockpit/    # Main UI module
-                ├── views/
-                │   └── ResearchViewNew.jsx  # MAIN RESEARCH VIEW
-                └── components/
-                    └── IndicatorPanes.jsx   # RSI/MACD component
+├── backend/
+│   └── modules/ta_engine/
+│       └── indicators/
+│           ├── indicator_visualization.py  # Raw pane data
+│           └── indicator_insights.py       # NEW: Interpretation engine
+└── frontend/
+    └── src/modules/cockpit/
+        ├── views/
+        │   └── ResearchViewNew.jsx  # Main Research view
+        └── components/
+            ├── IndicatorPanes.jsx    # Raw charts
+            └── IndicatorInsights.jsx # NEW: State/summary cards
 ```
-
-## Key API Endpoints
-- `/api/health` - Backend health check
-- `/api/ta-engine/mtf/{symbol}?timeframes={tf}` - Multi-timeframe analysis data
-- `/api/ta/status` - TA Engine status
-- `/api/ta/provider-health/coinbase` - Coinbase adapter health
 
 ## What's Implemented
 
-### Session 2026-03-21
-- ✅ Интеграция панели RSI/MACD в Research View (`ResearchViewNew.jsx`)
-- ✅ Панель отображается под основным графиком
-- ✅ RSI (14) и MACD (12,26,9) работают с реальными данными из API
+### Session 2026-03-22
+- ✅ **Indicator Insights Engine** (backend)
+  - RSI states: oversold, near_oversold, neutral, bullish_pressure, overbought
+  - MACD states: bullish/bearish crossover, momentum building/fading, neutral
+  - Returns: value, state, bias, strength, summary, color
+
+- ✅ **IndicatorInsights component** (frontend)
+  - Shows state badge (e.g., "NEAR OVERSOLD")
+  - Shows summary text (e.g., "RSI approaching oversold — downside momentum continues")
+  - Shows bias and strength indicators
+
+- ✅ ChartLab tab removed from UI
+- ✅ Research tab icon changed to BarChart2
+
+## API Contract
+
+```json
+{
+  "indicator_insights": {
+    "rsi": {
+      "value": 33.12,
+      "state": "near_oversold",
+      "bias": "bearish",
+      "strength": "medium",
+      "summary": "RSI approaching oversold — downside momentum continues.",
+      "color": "#86efac"
+    },
+    "macd": {
+      "state": "bearish_momentum_fading",
+      "bias": "neutral",
+      "strength": "low",
+      "summary": "MACD slightly negative — weak bearish bias.",
+      "color": "#fecaca"
+    }
+  }
+}
+```
 
 ## Backlog
 
-### P2 - Future Tasks
-- [ ] Добавить resizable функционал для панели осцилляторов (возможность "потянуть вверх")
-- [ ] Добавить UI для выбора других осцилляторов (Stochastic, Volume, OBV, ATR, ADX)
-- [ ] Добавить алерты для торговых паттернов (Head & Shoulders, Double Bottom)
+### P1 - Short Term
+- [ ] Add ADX interpretation (trend strength)
+- [ ] Add Volume/OBV interpretation (confirmation)
+- [ ] Resizable panel for indicator section
 
-## Tech Stack
-- **Backend:** Python, FastAPI, MongoDB (motor async driver)
-- **Frontend:** React, TailwindCSS, styled-components, lightweight-charts
-- **Data:** Coinbase public API (no keys required)
-- **DevOps:** Supervisor for service management
+### P2 - Future
+- [ ] Trading alerts for key patterns
+- [ ] Divergence detection (RSI/MACD vs price)
 
-## Notes
-- Работа ведётся ТОЛЬКО с модулем Research (не Chart Lab)
-- Основной view: `ResearchViewNew.jsx` (импортируется как `ResearchView` в `TechAnalysisModule.jsx`)

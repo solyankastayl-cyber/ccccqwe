@@ -50,6 +50,7 @@ from modules.ta_engine.execution import get_execution_layer
 from modules.ta_engine.setup.indicator_engine import get_indicator_engine
 from modules.ta_engine.indicators import get_indicator_registry, get_confluence_engine
 from modules.ta_engine.indicators.indicator_visualization import IndicatorVisualizationEngine
+from modules.ta_engine.indicators.indicator_insights import get_indicator_insights_engine
 from modules.ta_engine.contribution import get_contribution_engine
 from modules.ta_engine.render_plan import get_render_plan_engine_v2
 from modules.ta_engine.market_state import get_market_state_engine
@@ -339,6 +340,11 @@ class PerTimeframeBuilder:
         indicator_viz_engine = get_indicator_viz_engine()
         indicators_viz = indicator_viz_engine.compute_all(candles)
         
+        # Compute indicator insights (interpretations for Research view)
+        print(f"[PerTF] Step 6c: Indicator insights...")
+        insights_engine = get_indicator_insights_engine()
+        indicator_insights = insights_engine.analyze(indicators_viz.get("panes", []))
+        
         # Build TA context with proper structure
         ta_context = {
             "regime": structure_context.regime if structure_context else "unknown",
@@ -513,6 +519,7 @@ class PerTimeframeBuilder:
             # Indicators (convert IndicatorSignal objects to dicts)
             "indicator_result": [s.to_dict() if hasattr(s, 'to_dict') else s for s in indicator_result] if indicator_result else [],
             "indicators": indicators_viz,  # {overlays: [...], panes: [...]} for chart rendering
+            "indicator_insights": indicator_insights.to_dict(),  # RSI/MACD interpretations for Research
             "ta_context": ta_context,
             
             # Decision & Setup
@@ -638,6 +645,7 @@ class PerTimeframeBuilder:
             "alternative_patterns": [],
             "indicator_result": None,
             "indicators": {"overlays": [], "panes": []},  # Empty renderable indicators
+            "indicator_insights": {},  # Empty insights
             "ta_context": None,
             "decision": None,
             "unified_setup": {"valid": False, "direction": "no_trade", "chain": []},

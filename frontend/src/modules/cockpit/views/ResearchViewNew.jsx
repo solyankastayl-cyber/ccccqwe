@@ -46,6 +46,7 @@ import PatternsBlock from '../components/PatternsBlock';
 import ConfidenceExplanation from '../components/ConfidenceExplanation';
 import ExplanationPanel from '../components/ExplanationPanel';
 import IndicatorPanes from '../components/IndicatorPanes';
+import IndicatorInsights from '../components/IndicatorInsights';
 import ConfluenceMatrix from '../components/ConfluenceMatrix';
 import IndicatorSelector from '../components/IndicatorSelector';
 import ViewModeSelector from '../components/ViewModeSelector';
@@ -1710,7 +1711,14 @@ const ResearchView = () => {
         </ChartSection>
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* OSCILLATOR PANES (RSI/MACD) — Directly below chart, resizable */}
+        {/* INDICATOR INSIGHTS — Interpreted RSI/MACD with state & summary */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {setupData?.indicator_insights && (
+          <IndicatorInsights insights={setupData.indicator_insights} />
+        )}
+        
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* OSCILLATOR PANES (RSI/MACD) — Visual charts below insights */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         {setupData?.indicators?.panes?.length > 0 && (
           <BottomSection style={{ marginTop: '4px' }}>
