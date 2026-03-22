@@ -1,88 +1,145 @@
 # Technical Analysis Module - PRD
 
 ## Original Problem Statement
-Подними проект из репозитория https://github.com/solyankastayl-cyber/ccccq. Работаем только с модулем теханализа. 
-1. Реализовать функционал "Save Idea"
-2. Полный аудит индикаторов — 144 индикатора
-3. UI полировка — P1 (семантика) + P2 (визуальная иерархия)
-4. **FIX PATTERN DETECTION & RENDERING** — главная проблема
+Подними проект, клонируя репозиторий https://github.com/solyankastayl-cyber/343434343jghjhj. Изучи архитектуру, подними bootstrap. Работаем ТОЛЬКО с модулем теханализа.
+
+**Главная задача:** Pattern Geometry Normalization — создать единый универсальный визуальный контракт для ВСЕХ паттернов.
+
+Backend должен отдавать любую фигуру в одном формате:
+- type, label, direction, confidence, status
+- geometry: { segments[], levels[], zones[], markers[] }
+
+Frontend рисует ТОЛЬКО примитивы, не зная бизнес-логику конкретных паттернов.
 
 ## Architecture Overview
 ```
-Backend: per_tf_builder → run_all_detectors → pattern_selector → render_plan_v2
-Frontend: ResearchViewNew → ResearchChart (lightweight-charts)
+Backend: Coinbase Data → per_tf_builder → pattern_detectors_unified → pattern_selector → pattern_geometry_contract → render_plan_v2
+Frontend: ResearchViewNew → ResearchChart (lightweight-charts) → PatternGeometryRenderer
 ```
 
-## What Was Fixed (March 22, 2026)
+## Tech Stack
+- **Backend:** Python FastAPI, MongoDB
+- **Frontend:** React 19, lightweight-charts, styled-components
+- **Data Provider:** Coinbase
 
-### CRITICAL FIX: Pattern Detection Pipeline
+## What Was Implemented (March 22, 2026)
 
-**PROBLEM:** Паттерны не отображались на графике
-**ROOT CAUSE:** Несколько багов в цепочке detection → geometry → render
+### Pattern Geometry Contract (COMPLETE)
 
-**Fixes Applied:**
+**File:** `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py`
 
-1. **`pattern_detectors_unified.py` не импортировался**
-   - Добавлен импорт в `per_tf_builder.py`
-   - Декораторы `@register_pattern` теперь выполняются
+Universal schema for pattern visualization:
+```python
+{
+    "type": "ascending_triangle",
+    "label": "Ascending Triangle",
+    "direction": "bullish",
+    "confidence": 0.85,
+    "status": "active",
+    "geometry": {
+        "segments": [
+            {"kind": "resistance", "style": "solid", "points": [...]},
+            {"kind": "support_rising", "style": "solid", "points": [...]}
+        ],
+        "levels": [
+            {"kind": "breakout", "price": 73968.0, "label": "Breakout"},
+            {"kind": "invalidation", "price": 70236.0, "label": "Invalidation"}
+        ],
+        "zones": [],
+        "markers": [...]
+    }
+}
+```
 
-2. **`run_all_detectors()` вызывался с НЕПРАВИЛЬНЫМИ аргументами**
-   - Было: `run_all_detectors(candles, validator, pivot_highs_raw, ...)`
-   - Стало: `run_all_detectors(candles=, pivots_high=, pivots_low=, ...)`
-   - `validator` передавался вместо `pivots_high`!
+**Supported Patterns:**
+- Triangles: ascending, descending, symmetrical
+- Channels: ascending, descending, horizontal
+- Head & Shoulders / Inverse H&S
+- Double Top / Double Bottom
+- Triple Top / Triple Bottom
+- Wedges: rising, falling
+- Flags / Pennants
+- Range / Rectangle
 
-3. **`detect_triangles_unified` вызывал `detect_best_pattern`**
-   - Это возвращало ОДИН паттерн (channel победил triangle)
-   - Исправлено: вызываем каждый `validate_*_triangle` напрямую
+### Key Files
 
-4. **`pattern_selector` отклонял паттерны по `near_price`**
-   - `MAX_PRICE_DISTANCE` было 5% — слишком строго
-   - Изменено на 15%
+**Backend:**
+- `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py` - Universal geometry contract
+- `/app/backend/modules/ta_engine/setup/pattern_detectors_unified.py` - Pattern detectors with @register_pattern
+- `/app/backend/modules/ta_engine/setup/pattern_selector.py` - Pattern selection with Market Context Scoring
+- `/app/backend/modules/ta_engine/per_tf_builder.py` - Main TA pipeline (calls normalize_pattern_geometry)
+- `/app/backend/modules/ta_engine/ta_routes.py` - API endpoints
 
-5. **`MIN_PRIMARY_SCORE` было 0.50**
-   - Изменено на 0.45 для более широкого охвата
+**Frontend:**
+- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx` - Main chart component
+- `/app/frontend/src/modules/cockpit/components/PatternGeometryRenderer.jsx` - Universal geometry renderer
+- `/app/frontend/src/modules/cockpit/views/ResearchViewNew.jsx` - Research terminal orchestrator
 
-### RESULT
-- `ascending_triangle` detected: geo=0.93, conf=0.85
-- Pattern selected and rendered on chart
-- Story Line shows "ascending triangle"
-- Geometry (lines) visible on graph
+### API Endpoints
 
-## Files Changed
+```
+GET /api/ta-engine/status              - Health check
+GET /api/ta-engine/mtf/{symbol}        - Multi-timeframe analysis (main endpoint)
+GET /api/ta-engine/mtf/{symbol}/{tf}   - Single timeframe analysis
+GET /api/ta-engine/render-plan-v2/{symbol} - Render plan only
+GET /api/ta-engine/registry/patterns   - Pattern registry
+GET /api/ta-engine/registry/indicators - Indicator registry
+```
 
-### Backend
-- `/app/backend/modules/ta_engine/per_tf_builder.py`
-  - Fixed import of `pattern_detectors_unified`
-  - Fixed `run_all_detectors()` call arguments
-  
-- `/app/backend/modules/ta_engine/setup/pattern_detectors_unified.py`
-  - `detect_triangles_unified` now calls validators directly
-  - Added detailed logging
+### Testing Results
 
-- `/app/backend/modules/ta_engine/setup/pattern_selector.py`
-  - `MAX_PRICE_DISTANCE`: 0.05 → 0.15
-  - `MIN_PRIMARY_SCORE`: 0.50 → 0.45
+**Pattern Detection:**
+- ascending_triangle: DETECTED (confidence 0.85)
+- Geometry returned: 2 segments, 2 levels, 4 markers
 
-- `/app/backend/modules/ta_engine/setup/__init__.py`
-  - Added import of `pattern_detectors_unified`
+**Frontend Rendering:**
+- Candles: OK
+- Structure (HH/HL/LH/LL): OK
+- Levels (S/R): OK
+- Pattern geometry: OK
+- Indicators (RSI, MACD): OK
 
-### Frontend (P2)
-- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx`
-  - Structure lines opacity 50%, width 1.5px
-  
-- `/app/frontend/src/modules/cockpit/components/IndicatorControlBar.jsx`
-  - NEW: RSI/MACD as pill toggles
-  
-- `/app/frontend/src/modules/cockpit/components/StoryLine.jsx`
-  - NEW: Market narrative chain
+## User Personas
 
-## Testing Results
-- Pattern detection: ✅ ascending_triangle found
-- Pattern rendering: ✅ visible on chart
-- Structure rendering: ✅ HH/HL markers visible
-- Levels rendering: ✅ S/R lines visible
+1. **Trader** - Uses TA module to identify patterns and setups
+2. **Analyst** - Reviews pattern detection accuracy
+3. **Developer** - Extends pattern detection logic
 
-## Next Tasks
-1. Test more pattern types (double top/bottom, head & shoulders)
-2. FVG / Order Block visualization
-3. Pattern expiration and recency tuning
+## Core Requirements
+
+1. Backend MUST normalize ALL patterns to geometry contract
+2. Frontend MUST render ONLY primitives (no pattern-specific logic)
+3. Each timeframe is isolated (1 TF = 1 world)
+4. Channels/trends are market_state, NOT patterns
+
+## What's Been Implemented
+
+| Date | Feature | Status |
+|------|---------|--------|
+| Mar 22, 2026 | Project setup from GitHub | DONE |
+| Mar 22, 2026 | Pattern Geometry Contract | DONE |
+| Mar 22, 2026 | Universal Pattern Renderer | DONE |
+| Mar 22, 2026 | Frontend compilation fix | DONE |
+
+## Next Tasks (P0/P1)
+
+### P0 - Critical
+1. [ ] Test all 15+ pattern types with geometry
+2. [ ] Add FVG/Order Block to geometry contract
+3. [ ] Verify geometry on historical data
+
+### P1 - Important
+1. [ ] Improve pattern confidence scoring
+2. [ ] Add pattern expiration visualization
+3. [ ] StoryLine component integration with geometry
+
+### P2 - Nice to have
+1. [ ] Pattern backtesting module
+2. [ ] Custom pattern definition UI
+3. [ ] Export patterns as JSON/CSV
+
+## Backlog
+
+- Multi-asset pattern correlation
+- Machine learning pattern recognition
+- Social sharing of patterns
