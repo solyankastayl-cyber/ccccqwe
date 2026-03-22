@@ -3,15 +3,36 @@ import styled from 'styled-components';
 import { TrendingUp, TrendingDown, Zap, AlertTriangle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useMarket, useHypotheses, useSignalExplanation } from '../../../store/marketStore';
 import ResearchService from '../../../services/researchService';
+import IdeasPanel from '../components/IdeasPanel';
 
 // ============================================
 // STYLED COMPONENTS
 // ============================================
 
 const Container = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MainColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
+`;
+
+const SideColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  
+  @media (max-width: 1200px) {
+    order: -1;
+  }
 `;
 
 const LoadingContainer = styled.div`
@@ -373,6 +394,7 @@ const HypothesesView = () => {
 
   return (
     <Container data-testid="hypotheses-view">
+      <MainColumn>
       {/* Top Hypothesis */}
       {top && (
         <TopHypothesis>
@@ -524,6 +546,12 @@ const HypothesesView = () => {
           </HypothesisList>
         </CompetingSection>
       )}
+      </MainColumn>
+      
+      {/* Side Column - Saved Ideas */}
+      <SideColumn>
+        <IdeasPanel />
+      </SideColumn>
     </Container>
   );
 };

@@ -181,6 +181,23 @@ class SetupService {
   }
 
   /**
+   * Update idea (create new version)
+   */
+  async updateIdea(ideaId) {
+    try {
+      const response = await fetch(`${API_URL}/api/ta/ideas/${ideaId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Failed to update idea');
+      return await response.json();
+    } catch (error) {
+      console.error('SetupService.updateIdea error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Validate idea
    */
   async validateIdea(ideaId, currentPrice = null) {

@@ -1,3 +1,1 @@
-"""
-Core infrastructure modules.
-"""
+# Core module
