@@ -37,6 +37,10 @@ from modules.ta_engine.setup.pattern_selector import pattern_selector
 from modules.ta_engine.setup.pattern_expiration import pattern_expiration_engine
 from modules.ta_engine.setup.pattern_registry import run_all_detectors, filter_by_structure, penalize_overused_patterns, validate_candidate
 
+# IMPORTANT: Import pattern_detectors_unified to register all detectors
+# This triggers @register_pattern decorators at import time
+from modules.ta_engine.setup import pattern_detectors_unified  # noqa: F401
+
 from modules.ta_engine.decision import get_decision_engine_v2
 from modules.ta_engine.scenario import get_scenario_engine_v3
 from modules.ta_engine.structure import get_choch_validation_engine
@@ -279,9 +283,19 @@ class PerTimeframeBuilder:
         # STEP 5: PATTERN DETECTION
         # =============================================
         print(f"[PerTF] Step 5: Pattern detection...")
-        # Use raw Pivot objects for pattern detection
-        all_candidates = run_all_detectors(candles, validator, pivot_highs_raw, pivot_lows_raw, config)
+        # Run all detectors with correct arguments
+        all_candidates = run_all_detectors(
+            candles=candles,
+            pivots_high=pivot_highs_raw,
+            pivots_low=pivot_lows_raw,
+            levels=[],  # Levels calculated after patterns
+            structure_ctx=structure_context,
+            timeframe=timeframe,
+            config=config
+        )
         print(f"[PerTF] Pattern candidates found: {len(all_candidates)}")
+        for c in all_candidates:
+            print(f"[PerTF]   - {c.type}: geo={c.geometry_score:.2f}, conf={c.confidence:.2f}")
         
         # Validate and filter
         validated = [c for c in all_candidates if validate_candidate(c)]

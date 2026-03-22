@@ -37,10 +37,10 @@ class PatternSelector:
     4. CHANNELS ARE NOT PATTERNS — they go to market_state
     """
     
-    MIN_PRIMARY_SCORE = 0.50    # Primary pattern must score at least this
-    MIN_ALTERNATIVE_SCORE = 0.45  # Alternatives can be slightly lower
+    MIN_PRIMARY_SCORE = 0.45    # Primary pattern must score at least this (was 0.50)
+    MIN_ALTERNATIVE_SCORE = 0.40  # Alternatives can be slightly lower
     MAX_ALTERNATIVES = 2         # Show up to 2 alternatives
-    MAX_PRICE_DISTANCE = 0.05    # Pattern must be within 5% of current price
+    MAX_PRICE_DISTANCE = 0.15    # Pattern must be within 15% of current price (was 5%)
     
     # ═══════════════════════════════════════════════════════════════
     # FORBIDDEN PATTERN TYPES — these belong to MARKET STATE, not patterns

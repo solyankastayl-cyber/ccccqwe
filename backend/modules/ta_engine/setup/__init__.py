@@ -35,6 +35,10 @@ from .indicator_engine import get_indicator_engine
 from .level_engine import get_level_engine
 from .structure_engine import get_structure_engine
 
+# IMPORTANT: Import pattern_detectors_unified to register all pattern detectors
+# This triggers @register_pattern decorators
+from . import pattern_detectors_unified  # noqa: F401
+
 __all__ = [
     # Types
     "Setup",

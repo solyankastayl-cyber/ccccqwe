@@ -70,6 +70,8 @@ def detect_triangles_unified(
     """
     Detect all triangle patterns using pattern_validator_v2.
     Returns List[PatternCandidate] for unified ranking.
+    
+    FIXED: Now detects ALL triangles, not just "best pattern"
     """
     from .pattern_validator_v2 import get_pattern_validator_v2
     
@@ -78,21 +80,45 @@ def detect_triangles_unified(
     
     try:
         validator = get_pattern_validator_v2(timeframe, config)
-        pattern = validator.detect_best_pattern(candles)
+        pivot_highs, pivot_lows = validator.find_pivots(candles)
         
-        if pattern and "triangle" in pattern.get("type", "").lower():
-            # Add index info based on candles
-            pattern["start_index"] = len(candles) // 3
-            pattern["end_index"] = len(candles) - 1
-            pattern["last_touch_index"] = len(candles) - 10
-            
-            candidate = adapt_to_candidate(pattern, pattern.get("type"))
-            if candidate:
-                candidates.append(candidate)
+        print(f"[TriangleDetector] Pivots: {len(pivot_highs)} H, {len(pivot_lows)} L")
+        
+        if len(pivot_highs) < 2 or len(pivot_lows) < 2:
+            print(f"[TriangleDetector] Not enough pivots")
+            return []
+        
+        recent_candles = candles[-validator.pattern_window:] if len(candles) > validator.pattern_window else candles
+        
+        # Try each triangle type
+        triangle_types = [
+            ("descending_triangle", validator.validate_descending_triangle),
+            ("ascending_triangle", validator.validate_ascending_triangle),
+            ("symmetrical_triangle", validator.validate_symmetrical_triangle),
+        ]
+        
+        for t_type, validate_fn in triangle_types:
+            try:
+                pattern = validate_fn(pivot_highs, pivot_lows, recent_candles)
+                if pattern and "triangle" in pattern.get("type", "").lower():
+                    print(f"[TriangleDetector] FOUND: {t_type}, conf={pattern.get('confidence', 0):.2f}")
+                    # Add index info
+                    pattern["start_index"] = len(candles) // 3
+                    pattern["end_index"] = len(candles) - 1
+                    pattern["last_touch_index"] = len(candles) - 10
+                    
+                    candidate = adapt_to_candidate(pattern, pattern.get("type"))
+                    if candidate:
+                        candidates.append(candidate)
+                else:
+                    print(f"[TriangleDetector] {t_type}: not detected")
+            except Exception as e:
+                print(f"[TriangleDetector] {t_type} ERROR: {e}")
                 
     except Exception as e:
-        pass  # Fail-safe
+        print(f"[TriangleDetector] FATAL: {e}")
     
+    print(f"[TriangleDetector] Total candidates: {len(candidates)}")
     return candidates
 
 
