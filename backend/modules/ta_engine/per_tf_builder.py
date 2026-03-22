@@ -58,6 +58,7 @@ from modules.ta_engine.indicators.indicator_insights import get_indicator_insigh
 from modules.ta_engine.contribution import get_contribution_engine
 from modules.ta_engine.render_plan import get_render_plan_engine_v2
 from modules.ta_engine.market_state import get_market_state_engine
+from modules.ta_engine.patterns.pattern_geometry_contract import normalize_pattern_geometry
 from modules.ta_engine.structure import StructureVisualizationBuilder
 
 
@@ -528,6 +529,7 @@ class PerTimeframeBuilder:
             
             # Patterns
             "primary_pattern": primary_pattern.to_dict() if primary_pattern else None,
+            "pattern_geometry": normalize_pattern_geometry(primary_pattern.to_dict()) if primary_pattern else None,
             "alternative_patterns": [a.to_dict() for a in alternatives] if alternatives else [],
             
             # Indicators (convert IndicatorSignal objects to dicts)
