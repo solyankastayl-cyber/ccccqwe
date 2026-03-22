@@ -595,15 +595,15 @@ const ResearchChart = ({
     const effectiveStructure = rpStructure || chartStructure;
     
     if (effectiveStructure) {
-      // STRUCTURE = SUBDUED (secondary to pattern)
-      // Pattern is the PRIMARY visual element
+      // STRUCTURE = SUBDUED (secondary to candles — 50% opacity)
+      // Candles are the PRIMARY visual element
       const STRUCT_COLORS = {
-        bullishLeg: '#22c55e',   // Solid green for bullish legs
-        bearishLeg: '#ef4444',   // Solid red for bearish legs
-        HH: '#16a34a', HL: '#4ade80',
-        LH: '#f97316', LL: '#dc2626',
-        BOS_bull: '#22c55e', BOS_bear: '#ef4444',
-        CHOCH_bull: '#3b82f6', CHOCH_bear: '#f97316',
+        bullishLeg: 'rgba(34, 197, 94, 0.5)',   // Green 50% opacity
+        bearishLeg: 'rgba(239, 68, 68, 0.5)',   // Red 50% opacity
+        HH: 'rgba(22, 163, 74, 0.7)', HL: 'rgba(74, 222, 128, 0.7)',
+        LH: 'rgba(249, 115, 22, 0.7)', LL: 'rgba(220, 38, 38, 0.7)',
+        BOS_bull: 'rgba(34, 197, 94, 0.6)', BOS_bear: 'rgba(239, 68, 68, 0.6)',
+        CHOCH_bull: 'rgba(59, 130, 246, 0.6)', CHOCH_bear: 'rgba(249, 115, 22, 0.6)',
       };
 
       // ═══════════════════════════════════════════════════════════════
@@ -665,7 +665,7 @@ const ResearchChart = ({
         try {
           const legSeries = chart.addSeries(LineSeries, {
             color: color,
-            lineWidth: 3, // Thick visible structure lines
+            lineWidth: 1.5, // THINNER: subdued structure (was 3)
             lineStyle: 0, // Solid
             priceLineVisible: false,
             lastValueVisible: false,
@@ -726,12 +726,12 @@ const ResearchChart = ({
           text: labelText,
         });
 
-        // Horizontal break level line
+        // Horizontal break level line — SUBDUED
         if (brk.level) {
           try {
             const levelSeries = chart.addSeries(LineSeries, {
               color: color,
-              lineWidth: 2,
+              lineWidth: 1, // THINNER (was 2)
               lineStyle: 2, // dashed
               priceLineVisible: false,
               lastValueVisible: true,

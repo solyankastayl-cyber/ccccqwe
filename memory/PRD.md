@@ -5,70 +5,51 @@
 1. Реализовать функционал "Save Idea" — сохранение прогноза с возможностью обновления и отслеживания.
 2. Полный аудит индикаторов — 144 индикатора в системе
 3. UI полировка — семантика RSI/MACD, research-язык вместо trading-языка
+4. P2: Визуальная иерархия — график dominant, control bar, Story Line
 
 ## Architecture
-- **Backend**: FastAPI + MongoDB (modules/ta_engine/, modules/exchange_intelligence/, modules/microstructure_intelligence_v2/)
-- **Frontend**: React + styled-components (modules/cockpit/)
-- **Key Modules**:
-  - TA Engine: 38 classic technical indicators
-  - Exchange Intelligence: 31 exchange/derivatives indicators
-  - Microstructure: 23 orderbook/pressure indicators
-  - Macro Context: 15 macroeconomic indicators
-  - Capital Flow: 14 rotation indicators
-  - Regime Intelligence: 8 market regime indicators
-  - Patterns/Structure: 15 pattern detection indicators
+- **Backend**: FastAPI + MongoDB
+- **Frontend**: React + styled-components
+- **Modules**: TA Engine, Exchange Intelligence, Microstructure, Macro Context, Capital Flow, Regime, Patterns
 
 ## What's Been Implemented (March 22, 2026)
 
-### Session 1: Save Idea Feature
-- POST /api/ta/ideas - Create idea
-- GET /api/ta/ideas - List ideas
-- POST /api/ta/ideas/{id}/update - Update version
-- POST /api/ta/ideas/{id}/validate - Validate
-- GET /api/ta/ideas/{id}/timeline - Timeline
-- IdeasPanel component in HypothesesView
+### Session 1: Save Idea Feature ✅
+- CRUD API for ideas with versioning + validation + timeline
 
-### Session 2: Indicator Audit
-- Full audit of 144 indicators across all modules
-- Created INDICATORS_FULL_AUDIT.md
-- Identified 19 TA indicators needing implementation
-- All Exchange/Microstructure/Macro indicators functional
+### Session 2: Indicator Audit ✅
+- Full audit: 144 indicators across all modules
+- 122 working, 22 need implementation
 
-### Session 3: UI Polish (P1)
-- IndicatorInsights V3: RSI/MACD cards with proper interpretation
-  - RSI 37 · Near Oversold → "Selling pressure weakening"
-  - MACD · Bearish Fading → "Selling pressure easing"
-- Market Context: Research-oriented language
-- Technical Setup: "Setup Quality" instead of "Tradeability"
-- Key insight line: "Resistance at X defines upside risk"
+### Session 3: P1 — Semantic Polish ✅
+- RSI/MACD interpretation fixed
+- Research language (no trading jargon)
 
-## Testing Results
-- Save Idea: 100% (all API endpoints working)
-- UI: RSI/MACD cards display correctly
-- Market Context/Technical Setup blocks render
+### Session 4: P2 — Visual Hierarchy ✅
+- **Graph dominant**: structure lines 50% opacity, 1.5px (was 3px)
+- **RSI/MACD → IndicatorControlBar**: inline pill toggles
+- **Story Line**: Market narrative chain with phase indicator
+- **Compact spacing**: -30% vertical gaps
+- **Context + Setup**: unified compact blocks
 
-## Backlog (P1/P2 Features)
+## P2 Checklist
+- [x] Graph = most important visual
+- [x] Overlays subdued (opacity 50%, thinner lines)
+- [x] RSI/MACD as control layer (pills, not cards)
+- [x] Vertical spacing reduced
+- [x] Story Line added (Market Story → Phase)
+- [ ] Context + Setup fully merged (partial)
+- [ ] TA Brain / Confluence simplified (pending)
+- [ ] Empty states (pending)
 
-### P1: Remaining UI Polish
-- [ ] P2: Визуальная иерархия — график главный
-- [ ] P3: Empty states для блоков без данных
-- [ ] P4: Синхронизация выводов между блоками
+## Next Tasks (P3)
+1. Empty states for all blocks
+2. TA Brain — show only top 3 drivers
+3. Sync conclusions across blocks
+4. Analysis block as final research note
 
-### P1: Missing TA Indicators (19)
-- VWMA, HMA, Pivot Points, Fibonacci Retracement
-- Stochastic RSI, MFI
-- ROC, TRIX
-- Volume bars, A/D Line, CMF
-- BB Width, Historical Volatility
-- DMI (+DI/-DI), Aroon
-
-### P2: Pattern Visualization
-- Liquidity Zones rendering
-- FVG rendering  
-- Order Block rendering
-
-## Next Tasks
-1. Implement remaining TA indicators
-2. Complete UI hierarchy polish
-3. Empty states for all blocks
-4. Story line chain improvement
+## Files Changed
+- ResearchChart.jsx: structure lines opacity/width
+- IndicatorControlBar.jsx: NEW — pill toggles
+- StoryLine.jsx: NEW — narrative chain
+- ResearchViewNew.jsx: integrated components, compact spacing

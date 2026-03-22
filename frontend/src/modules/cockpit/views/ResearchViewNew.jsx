@@ -46,7 +46,7 @@ import PatternsBlock from '../components/PatternsBlock';
 import ConfidenceExplanation from '../components/ConfidenceExplanation';
 import ExplanationPanel from '../components/ExplanationPanel';
 import IndicatorPanes from '../components/IndicatorPanes';
-import IndicatorInsights from '../components/IndicatorInsights';
+import IndicatorControlBar from '../components/IndicatorControlBar';
 import ConfluenceMatrix from '../components/ConfluenceMatrix';
 import IndicatorSelector from '../components/IndicatorSelector';
 import ViewModeSelector from '../components/ViewModeSelector';
@@ -66,6 +66,7 @@ import {
 } from '../engine/GraphVisibilityEngine';
 import setupService from '../../../services/setupService';
 import { buildNarrative, NarrativeSummary } from '../../../components/chart-engine/narrative';
+import StoryLine from '../components/StoryLine';
 
 // ════════════════════════════════════════════════════════════════
 // CONFLUENCE ENGINE — TA Decision Logic (NEW!)
@@ -1721,15 +1722,27 @@ const ResearchView = () => {
         </ChartSection>
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* INDICATOR CARDS — Click to toggle pane visibility */}
+        {/* INDICATOR CONTROL BAR — Click to toggle pane visibility */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         {setupData?.indicator_insights && (
-          <IndicatorInsights 
+          <IndicatorControlBar 
             insights={setupData.indicator_insights}
             activeIndicators={activeIndicators}
             onToggle={handleIndicatorToggle}
           />
         )}
+        
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* STORY LINE — Market Narrative Chain (connects graph + analysis) */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <StoryLine 
+          liquidity={setupData?.liquidity}
+          displacement={setupData?.displacement}
+          chochValidation={setupData?.choch_validation}
+          structure={setupData?.structure}
+          decision={decision}
+          pattern={primaryPattern}
+        />
         
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* OSCILLATOR PANES — Only show when card is clicked */}
@@ -1746,29 +1759,29 @@ const ResearchView = () => {
 
 
         {/* ════════════════════════════════════════════════════════════════ */}
-        {/* UNIFIED ANALYSIS BAR — Below chart, combines all context panels */}
-        {/* Replaces: MarketContextBar, Confluence Panel, MTFHeader, TAContext */}
+        {/* UNIFIED ANALYSIS BAR — Context + Setup (P2: COMPACT) */}
         {/* ════════════════════════════════════════════════════════════════ */}
         {decision && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            margin: '16px 0',
+            gap: '10px',
+            margin: '10px 0',
           }}>
             {/* LEFT: Market Context Summary */}
             <div style={{
               background: '#fff',
               border: '1px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '16px',
+              borderRadius: '10px',
+              padding: '12px 14px',
             }}>
               <div style={{
-                fontSize: '11px',
-                fontWeight: '600',
+                fontSize: '10px',
+                fontWeight: '700',
                 color: '#64748b',
                 textTransform: 'uppercase',
-                marginBottom: '12px',
+                letterSpacing: '0.5px',
+                marginBottom: '10px',
               }}>
                 Market Context — {selectedTF}
               </div>
@@ -1843,19 +1856,20 @@ const ResearchView = () => {
               )}
             </div>
             
-            {/* RIGHT: Pattern & Structure */}
+            {/* RIGHT: Pattern & Structure — COMPACT */}
             <div style={{
               background: '#fff',
               border: '1px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '16px',
+              borderRadius: '10px',
+              padding: '12px 14px',
             }}>
               <div style={{
-                fontSize: '11px',
-                fontWeight: '600',
+                fontSize: '10px',
+                fontWeight: '700',
                 color: '#64748b',
                 textTransform: 'uppercase',
-                marginBottom: '12px',
+                letterSpacing: '0.5px',
+                marginBottom: '10px',
               }}>
                 Technical Setup
               </div>
@@ -1863,26 +1877,27 @@ const ResearchView = () => {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px',
+                gap: '8px',
               }}>
                 {/* Pattern */}
                 <div style={{
                   background: '#f8fafc',
-                  borderRadius: '8px',
-                  padding: '10px',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
                 }}>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>PATTERN</div>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '3px', textTransform: 'uppercase' }}>Pattern</div>
                   <div style={{
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: '600',
                     color: primaryPattern?.type ? '#0f172a' : '#94a3b8',
                   }}>
-                    {primaryPattern?.type?.replace(/_/g, ' ') || 'None detected'}
+                    {primaryPattern?.type?.replace(/_/g, ' ') || 'None'}
                   </div>
                   {primaryPattern?.direction && (
                     <div style={{
-                      fontSize: '10px',
-                      marginTop: '4px',
+                      fontSize: '9px',
+                      marginTop: '2px',
+                      fontWeight: '600',
                       color: primaryPattern.direction === 'bullish' ? '#16a34a' : 
                              primaryPattern.direction === 'bearish' ? '#dc2626' : '#64748b',
                     }}>
@@ -1894,19 +1909,19 @@ const ResearchView = () => {
                 {/* Levels Count */}
                 <div style={{
                   background: '#f8fafc',
-                  borderRadius: '8px',
-                  padding: '10px',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
                 }}>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>KEY LEVELS</div>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '3px', textTransform: 'uppercase' }}>Levels</div>
                   <div style={{
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: '600',
                     color: '#0f172a',
                   }}>
                     {levels?.length || 0} active
                   </div>
-                  <div style={{ fontSize: '10px', marginTop: '4px', color: '#64748b' }}>
-                    {levels?.filter(l => l.type === 'support').length || 0} support, {levels?.filter(l => l.type === 'resistance').length || 0} resistance
+                  <div style={{ fontSize: '9px', marginTop: '2px', color: '#64748b' }}>
+                    {levels?.filter(l => l.type === 'support').length || 0}S / {levels?.filter(l => l.type === 'resistance').length || 0}R
                   </div>
                 </div>
               </div>
