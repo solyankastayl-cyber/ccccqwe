@@ -1,79 +1,56 @@
 # Technical Analysis Module - PRD
 
 ## Original Problem Statement
-Проект теханализа криптовалют. Репозиторий: `https://github.com/solyankastayl-cyber/cdcdcd1222`
-
-Пользователь работает **только** с модулем теханализа (Research view). Требования:
-1. Поднять проект (bootstrap, frontend, backend, Coinbase adapter)
-2. Воссоздать функционал RSI и MACD индикаторов под графиком
-3. **Показывать интерпретацию индикаторов, а не просто сырые данные**
+Подними проект из репозитория https://github.com/solyankastayl-cyber/ccccq. Работаем только с модулем теханализа. Реализовать функционал "Save Idea" — сохранение прогноза с возможностью обновления и отслеживания.
 
 ## Architecture
+- **Backend**: FastAPI + MongoDB (modules/ta_engine/ideas/)
+- **Frontend**: React + styled-components (modules/cockpit/)
+- **Key Files**:
+  - Backend: idea_routes.py, idea_service.py, models.py, repository.py
+  - Frontend: IdeasPanel.jsx, HypothesesView.jsx, TechAnalysisModule.jsx, setupService.js
 
-```
-/app/
-├── backend/
-│   └── modules/ta_engine/
-│       └── indicators/
-│           ├── indicator_visualization.py  # Raw pane data
-│           └── indicator_insights.py       # NEW: Interpretation engine
-└── frontend/
-    └── src/modules/cockpit/
-        ├── views/
-        │   └── ResearchViewNew.jsx  # Main Research view
-        └── components/
-            ├── IndicatorPanes.jsx    # Raw charts
-            └── IndicatorInsights.jsx # NEW: State/summary cards
-```
+## Core Requirements
+1. ✅ Save trading idea with technical analysis snapshot
+2. ✅ Update idea (create new version with fresh analysis)
+3. ✅ Validate idea predictions against market outcome
+4. ✅ View idea timeline (versions + validations)
+5. ✅ List and filter saved ideas
+6. ✅ Delete ideas
 
-## What's Implemented
+## What's Been Implemented (March 22, 2026)
+### Backend
+- POST /api/ta/ideas - Create idea
+- GET /api/ta/ideas - List ideas with filters
+- GET /api/ta/ideas/{id} - Get idea details
+- POST /api/ta/ideas/{id}/update - Update with new version
+- POST /api/ta/ideas/{id}/validate - Validate predictions
+- GET /api/ta/ideas/{id}/timeline - Timeline view
+- DELETE /api/ta/ideas/{id} - Delete idea
 
-### Session 2026-03-22
-- ✅ **Indicator Insights Engine** (backend)
-  - RSI states: oversold, near_oversold, neutral, bullish_pressure, overbought
-  - MACD states: bullish/bearish crossover, momentum building/fading, neutral
-  - Returns: value, state, bias, strength, summary, color
+### Frontend
+- IdeasPanel component (list, expand, update, validate, delete)
+- Integration into HypothesesView (sidebar panel)
+- Save Idea button in TechAnalysisModule header
+- Toast notifications for user feedback
+- setupService extended with Ideas API methods
 
-- ✅ **IndicatorInsights component** (frontend)
-  - Shows state badge (e.g., "NEAR OVERSOLD")
-  - Shows summary text (e.g., "RSI approaching oversold — downside momentum continues")
-  - Shows bias and strength indicators
+## Testing Results
+- Backend: 100% (8/8 tests passed)
+- Frontend: 100% (6/6 features tested)
 
-- ✅ ChartLab tab removed from UI
-- ✅ Research tab icon changed to BarChart2
+## User Personas
+- Traders using technical analysis for market predictions
+- Portfolio managers tracking prediction accuracy
 
-## API Contract
+## Backlog (P1/P2 Features)
+- P1: Tags filtering in IdeasPanel
+- P1: Notes editing for ideas
+- P2: Export ideas to CSV/PDF
+- P2: Share ideas with team
+- P2: Historical accuracy analytics dashboard
 
-```json
-{
-  "indicator_insights": {
-    "rsi": {
-      "value": 33.12,
-      "state": "near_oversold",
-      "bias": "bearish",
-      "strength": "medium",
-      "summary": "RSI approaching oversold — downside momentum continues.",
-      "color": "#86efac"
-    },
-    "macd": {
-      "state": "bearish_momentum_fading",
-      "bias": "neutral",
-      "strength": "low",
-      "summary": "MACD slightly negative — weak bearish bias.",
-      "color": "#fecaca"
-    }
-  }
-}
-```
-
-## Backlog
-
-### P1 - Short Term
-- [ ] Add ADX interpretation (trend strength)
-- [ ] Add Volume/OBV interpretation (confirmation)
-- [ ] Resizable panel for indicator section
-
-### P2 - Future
-- [ ] Trading alerts for key patterns
-- [ ] Divergence detection (RSI/MACD vs price)
-
+## Next Tasks
+1. Implement tags filtering UI
+2. Add notes editing in expanded view
+3. Accuracy tracking visualization
