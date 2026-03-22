@@ -186,8 +186,17 @@ const IndicatorPane = ({
       series.setData(dedupedHist);
     } else {
       // Line indicator
+      // For RSI: color based on current value
+      let lineColor = indicator.color || COLORS.rsi;
+      if (indicator.id === 'rsi' && dedupedData.length > 0) {
+        const lastValue = dedupedData[dedupedData.length - 1].value;
+        if (lastValue < 30) lineColor = '#22c55e';  // Oversold = green
+        else if (lastValue > 70) lineColor = '#ef4444';  // Overbought = red
+        else lineColor = '#64748b';  // Neutral = gray
+      }
+      
       const series = chart.addSeries(LineSeries, {
-        color: indicator.color || COLORS.rsi,
+        color: lineColor,
         lineWidth: indicator.line_width || 2,
         priceLineVisible: false,
         lastValueVisible: true,

@@ -617,6 +617,16 @@ const ResearchView = () => {
   // Indicator selection state (max 2 overlays, max 2 panes)
   const [selectedOverlays, setSelectedOverlays] = useState(['ema_20', 'ema_50']);
   const [selectedPanes, setSelectedPanes] = useState(['rsi', 'macd']);
+  
+  // Active indicators toggle (for pane visibility)
+  const [activeIndicators, setActiveIndicators] = useState({ rsi: false, macd: false });
+  
+  const handleIndicatorToggle = useCallback((indicator) => {
+    setActiveIndicators(prev => ({
+      ...prev,
+      [indicator]: !prev[indicator]
+    }));
+  }, []);
 
   // Fetch MTF data from per-timeframe pipeline
   // CRITICAL: Fetch ALL timeframes at once, not one by one
@@ -1711,20 +1721,24 @@ const ResearchView = () => {
         </ChartSection>
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* INDICATOR INSIGHTS — Interpreted RSI/MACD with state & summary */}
+        {/* INDICATOR CARDS — Click to toggle pane visibility */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         {setupData?.indicator_insights && (
-          <IndicatorInsights insights={setupData.indicator_insights} />
+          <IndicatorInsights 
+            insights={setupData.indicator_insights}
+            activeIndicators={activeIndicators}
+            onToggle={handleIndicatorToggle}
+          />
         )}
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* OSCILLATOR PANES (RSI/MACD) — Visual charts below insights */}
+        {/* OSCILLATOR PANES — Only show when card is clicked */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {setupData?.indicators?.panes?.length > 0 && (
+        {(activeIndicators.rsi || activeIndicators.macd) && setupData?.indicators?.panes?.length > 0 && (
           <BottomSection style={{ marginTop: '4px' }}>
             <IndicatorPanes 
               indicators={setupData.indicators}
-              visiblePanes={['rsi', 'macd']}
+              visiblePanes={Object.entries(activeIndicators).filter(([_, v]) => v).map(([k]) => k)}
               paneHeight={85}
             />
           </BottomSection>
