@@ -4,7 +4,6 @@ export { default as CockpitAPI } from './services/api';
 
 // Views
 export { default as ResearchView } from './views/ResearchView';
-export { default as ChartLabView } from './views/ChartLabView';
 export { default as HypothesesView } from './views/HypothesesView';
 export { default as TradingTerminalView } from './views/TradingTerminalView';
 export { default as SystemControlView } from './views/SystemControlView';

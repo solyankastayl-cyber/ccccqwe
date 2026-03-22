@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  LineChart, Brain, Search,
+  Brain, BarChart2,
   TrendingUp, TrendingDown, Zap,
   RefreshCw, Share2, Camera, Bookmark
 } from 'lucide-react';
@@ -189,13 +189,11 @@ const MainContent = styled.div`
 `;
 
 // ============================================
-// USER TABS (Research only - no admin)
-// Chart Lab — отдельная логика, не трогать
+// USER TABS (Research only)
 // ============================================
 
 const USER_TABS = [
-  { id: 'research', label: 'Research', icon: Search },
-  { id: 'chart', label: 'Chart Lab', icon: LineChart },
+  { id: 'research', label: 'Research', icon: BarChart2 },
   { id: 'hypotheses', label: 'Hypotheses', icon: Brain }
 ];
 
@@ -281,9 +279,8 @@ const TechAnalysisInner = () => {
       </TabsNav>
       
       {/* Main Content */}
-      <MainContent data-testid="main-content" $isChart={activeTab === 'chart'}>
+      <MainContent data-testid="main-content">
         {activeTab === 'research' && <ResearchView />}
-        {activeTab === 'chart' && <ChartLabView />}
         {activeTab === 'hypotheses' && <HypothesesView />}
       </MainContent>
     </PageContainer>
@@ -308,7 +305,6 @@ const TechAnalysisModule = () => {
 
 // Import views - Light theme with tables and full UI
 import ResearchView from './views/ResearchViewNew';
-import ChartLabView from './views/ChartLabView';
 import HypothesesView from './views/HypothesesView';
 
 export default TechAnalysisModule;
