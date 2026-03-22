@@ -195,6 +195,14 @@ const IndicatorPane = ({
         else lineColor = '#64748b';  // Neutral = gray
       }
       
+      // For MACD: color based on value (positive = green, negative = red)
+      if (indicator.id === 'macd' && dedupedData.length > 0) {
+        const lastValue = dedupedData[dedupedData.length - 1].value;
+        if (lastValue > 0) lineColor = '#22c55e';  // Positive = green
+        else if (lastValue < 0) lineColor = '#ef4444';  // Negative = red
+        else lineColor = '#64748b';  // Zero = neutral
+      }
+      
       const series = chart.addSeries(LineSeries, {
         color: lineColor,
         lineWidth: indicator.line_width || 2,
@@ -204,29 +212,31 @@ const IndicatorPane = ({
       });
       series.setData(dedupedData);
       
-      // Add overbought/oversold zones
-      if (showZones && indicator.overbought !== null && indicator.overbought !== undefined) {
-        // Add horizontal price lines for zones
-        series.createPriceLine({
-          price: indicator.overbought,
-          color: COLORS.zone_line,
-          lineWidth: 1,
-          lineStyle: 2, // dashed
-          axisLabelVisible: false,
-        });
+      // Add overbought/oversold zones (RSI only)
+      if (showZones && indicator.id === 'rsi') {
+        if (indicator.overbought !== null && indicator.overbought !== undefined) {
+          series.createPriceLine({
+            price: indicator.overbought,
+            color: COLORS.zone_line,
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: false,
+          });
+        }
+        
+        if (indicator.oversold !== null && indicator.oversold !== undefined) {
+          series.createPriceLine({
+            price: indicator.oversold,
+            color: COLORS.zone_line,
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: false,
+          });
+        }
       }
       
-      if (showZones && indicator.oversold !== null && indicator.oversold !== undefined) {
-        series.createPriceLine({
-          price: indicator.oversold,
-          color: COLORS.zone_line,
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-        });
-      }
-      
-      if (showZones && indicator.zero_line) {
+      // Zero line for MACD
+      if (showZones && indicator.id === 'macd') {
         series.createPriceLine({
           price: 0,
           color: COLORS.zone_line,
@@ -237,58 +247,8 @@ const IndicatorPane = ({
       }
     }
     
-    // Add extra lines (signal line, %D, etc.)
-    if (indicator.extra_lines) {
-      indicator.extra_lines.forEach(line => {
-        if (!line.data?.length) return;
-        
-        const lineData = line.data
-          .map(d => ({ time: parseTime(d.time), value: d.value }))
-          .filter(d => d.time > 0 && d.value !== null)
-          .sort((a, b) => a.time - b.time);
-        
-        const seenLine = new Set();
-        const dedupedLine = lineData.filter(d => {
-          if (seenLine.has(d.time)) return false;
-          seenLine.add(d.time);
-          return true;
-        });
-        
-        if (line.style === 'histogram') {
-          // MACD histogram
-          const histData = line.data.map(d => {
-            const val = d.value;
-            return {
-              time: parseTime(d.time),
-              value: val,
-              color: val >= 0 ? COLORS.macd_histogram_pos : COLORS.macd_histogram_neg
-            };
-          }).filter(d => d.time > 0 && d.value !== null).sort((a, b) => a.time - b.time);
-          
-          const seenH = new Set();
-          const dedupedH = histData.filter(d => {
-            if (seenH.has(d.time)) return false;
-            seenH.add(d.time);
-            return true;
-          });
-          
-          const histSeries = chart.addSeries(HistogramSeries, {
-            priceLineVisible: false,
-            lastValueVisible: false,
-          });
-          histSeries.setData(dedupedH);
-        } else {
-          const lineSeries = chart.addSeries(LineSeries, {
-            color: line.color || COLORS.macd_signal,
-            lineWidth: 1,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false,
-          });
-          lineSeries.setData(dedupedLine);
-        }
-      });
-    }
+    // NOTE: Extra lines (signal, histogram) NOT rendered for clean view
+    // MACD shows single analytical line only
     
     chart.timeScale().fitContent();
     
