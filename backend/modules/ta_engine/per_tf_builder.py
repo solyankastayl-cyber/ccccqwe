@@ -33,7 +33,10 @@ from modules.ta_engine.setup.pattern_validator_v2 import get_pattern_validator_v
 from modules.ta_engine.setup.structure_engine_v2 import get_structure_engine_v2
 from modules.ta_engine.setup.structure_context_engine import structure_context_engine
 from modules.ta_engine.setup.pattern_ranking_engine import pattern_ranking_engine
-from modules.ta_engine.setup.pattern_selector import pattern_selector
+from modules.ta_engine.setup.pattern_selector import get_pattern_selector
+
+# Get singleton instance
+pattern_selector = get_pattern_selector()
 from modules.ta_engine.setup.pattern_expiration import pattern_expiration_engine
 from modules.ta_engine.setup.pattern_registry import run_all_detectors, filter_by_structure, penalize_overused_patterns, validate_candidate
 
@@ -324,11 +327,14 @@ class PerTimeframeBuilder:
         # Penalize overused
         diversified = penalize_overused_patterns(ranked)
         
-        # Select best with market context
+        # Select best with market context using PSE v2.0
         primary_pattern, alternatives = pattern_selector.select(
             diversified,
+            candles=candles,
             current_price=current_price,
+            market_state=structure_context_dict,
             structure_context=structure_context_dict,
+            levels=[],  # Levels calculated later
             liquidity=liquidity,
             fib=fib,
             poi=poi,

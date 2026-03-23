@@ -45,9 +45,25 @@ class PatternCandidate:
     cleanliness_score: float = 0.0      # Overall quality
     total_score: float = 0.0            # Final ranking score
     
+    # NEW: Production scoring fields (PSE v2.0)
+    context_score: float = 0.0          # Market context fit
+    relevance_score: float = 0.0        # Recency + proximity
+    clarity_score: float = 0.0          # Visual clarity
+    final_score: float = 0.0            # Weighted final score
+    
+    # Status and metadata
+    status: Optional[str] = "active"    # active, forming, broken, expired, ambiguous
+    touches: Optional[int] = None       # Alias for touch_count (for compatibility)
+    scores: Optional[Dict[str, float]] = None  # Additional scores dict
+    
     # Trading levels
     breakout_level: Optional[float] = None
     invalidation: Optional[float] = None
+    
+    def __post_init__(self):
+        """Set computed fields."""
+        if self.touches is None:
+            self.touches = self.touch_count
     
     def to_dict(self) -> dict:
         """Convert to API response format."""
@@ -56,16 +72,21 @@ class PatternCandidate:
             "direction": self.direction,
             "confidence": round(self.confidence, 2),
             "total_score": round(self.total_score, 2),
+            "final_score": round(self.final_score, 2),
+            "status": self.status,
             "scores": {
                 "geometry": round(self.geometry_score, 2),
                 "structure": round(self.structure_score, 2),
                 "level": round(self.level_score, 2),
                 "recency": round(self.recency_score, 2),
                 "cleanliness": round(self.cleanliness_score, 2),
+                "context": round(self.context_score, 2),
+                "relevance": round(self.relevance_score, 2),
+                "clarity": round(self.clarity_score, 2),
             },
             "touches": self.touch_count,
             "containment": round(self.containment, 2),
-            "line_scores": {k: round(v, 1) for k, v in self.line_scores.items()},
+            "line_scores": {k: round(v, 1) for k, v in (self.line_scores or {}).items()},
             "points": self.points,
             "anchor_points": self.anchor_points,
             "breakout_level": round(self.breakout_level, 2) if self.breakout_level else None,
