@@ -36,23 +36,30 @@ export function drawBoundaries(chart, boundaries, options = {}) {
   const lines = [];
   const { 
     primaryColor = '#3B82F6',  // Blue
-    secondaryColor = '#9CA3AF', // Gray
-    lineWidth = 2,
+    secondaryColor = '#9CA3AF',
+    lineWidth = 3,
+    boundaryWidth = 3,
   } = options;
+  
+  const actualWidth = boundaryWidth || lineWidth;
+  
+  console.log('[PatternRenderer] drawBoundaries:', boundaries.length, 'boundaries');
   
   boundaries.forEach(boundary => {
     if (!boundary || boundary.kind !== 'trendline') return;
     
     const { x1, y1, x2, y2, style = 'primary' } = boundary;
     
-    if (x1 == null || y1 == null || x2 == null || y2 == null) return;
+    if (x1 == null || y1 == null || x2 == null || y2 == null) {
+      console.warn('[PatternRenderer] Missing coordinates:', boundary);
+      return;
+    }
     
     try {
-      // Lightweight Charts API: chart.addSeries(SeriesType, options)
       const line = chart.addSeries(LineSeries, {
-        color: style === 'primary' ? primaryColor : secondaryColor,
-        lineWidth: style === 'primary' ? lineWidth : 1,
-        lineStyle: 0, // Solid
+        color: primaryColor,
+        lineWidth: actualWidth,
+        lineStyle: 0,
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -63,9 +70,10 @@ export function drawBoundaries(chart, boundaries, options = {}) {
         { time: x2, value: y2 },
       ]);
       
+      console.log(`[PatternRenderer] ${boundary.id} rendered`);
       lines.push(line);
     } catch (e) {
-      console.warn('[PatternRenderer] Failed to draw boundary:', e);
+      console.warn('[PatternRenderer] FAILED:', e);
     }
   });
   

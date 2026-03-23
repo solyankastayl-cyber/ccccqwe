@@ -1222,9 +1222,10 @@ const ResearchChart = ({
         
         // Render new pattern
         window._patternRenderObjects = renderPattern(chart, priceSeries, renderContract, {
-          boundaryColor: '#3B82F6',
-          necklineColor: '#EF4444',
-          breakoutColor: '#10B981',
+          boundaryColor: '#3B82F6',  // Blue
+          necklineColor: '#EF4444',  // Red
+          breakoutColor: '#10B981',  // Green
+          boundaryWidth: 3,
         });
         
         console.log('[ResearchChart] V4 pattern rendered:', window._patternRenderObjects);
@@ -1394,7 +1395,7 @@ const ResearchChart = ({
         chartInstanceRef.current = null;
       }
     };
-  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, patternGeometry, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow]);
+  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, patternGeometry, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow, data]);
 
   const direction = pattern?.direction || setup?.direction || 'neutral';
   const confidence = pattern?.total_score || pattern?.confidence || setup?.confidence || 0;
