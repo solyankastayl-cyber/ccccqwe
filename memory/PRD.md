@@ -3,110 +3,117 @@
 ## Original Problem Statement
 Клонировать репозиторий, изучить архитектуру, работать ТОЛЬКО с модулем теханализа.
 
-## Phase 1 COMPLETE: Pattern Geometry Contract
-**Проблема:** Backend не отдавал geometry / отдавал в разных форматах → Frontend не мог рисовать
-**Решение:** Единый geometry contract с normalize_pattern_geometry()
+## COMPLETED PHASES
 
-## Phase 2 COMPLETE: Pattern Selection Engine v2.0 (PSE)
-**Проблема:** Рисовался мусор, много фигур, нет фильтрации
-**Решение:** Production-ready cascade filtering
+### Phase 1: Pattern Geometry Contract ✅
+- Backend нормализует geometry в единый формат
+- Frontend рисует только примитивы (segments, levels, markers)
 
-### PSE v2.0 Pipeline
+### Phase 2: Pattern Selection Engine v2.0 ✅
+- 7-этапный cascade filtering
+- Strict thresholds для отсева мусора
+
+### Phase 3: Structure Builder v2 + Pattern Engine v3 ✅
+**Проблема:** Входные данные были мусорными → паттерны получались кривыми
+**Решение:** Clean structure layer с TF-adaptive filtering
+
+## Architecture (FINAL)
+
 ```
-1. Hard gating → убить мусор (channels, ranges, low touches)
-2. Geometry score → shape quality >= 0.62
-3. Context score → market fit >= 0.50  
-4. Relevance score → recency + proximity >= 0.60
-5. Final score → weighted combination >= 0.68
-6. Conflict resolution → dedupe overlapping
-7. Winner selection → gap check >= 0.05
-```
-
-### Thresholds
-| Score | Threshold |
-|-------|-----------|
-| MIN_TOUCHES | 4 |
-| MIN_SPAN | 12 candles |
-| MIN_CONTAINMENT | 0.65 |
-| MIN_GEOMETRY_SCORE | 0.62 |
-| MIN_CONTEXT_SCORE | 0.50 |
-| MIN_RELEVANCE_SCORE | 0.60 |
-| MIN_FINAL_SCORE | 0.68 |
-| MIN_WINNER_GAP | 0.05 |
-
-### Score Weights
-```
-final_score = geometry * 0.40 + context * 0.25 + relevance * 0.25 + clarity * 0.10
+candles
+→ pivots
+→ Structure Builder v2 (filter by min_move per TF)
+→ Pattern Engine v3 (line fit + touch validation)
+→ PSE v2.0 (cascade selection)
+→ Geometry Contract (normalize)
+→ Frontend Renderer (primitives only)
 ```
 
-## API Response Format
-```json
-{
-  "primary_pattern": {
-    "type": "ascending_triangle",
-    "direction": "bullish",
-    "status": "active",
-    "final_score": 0.71,
-    "scores": {
-      "geometry": 0.75,
-      "context": 0.57,
-      "relevance": 0.82,
-      "clarity": 0.67
-    },
-    "geometry": {
-      "segments": [...],
-      "levels": [...],
-      "markers": [...]
-    }
-  }
-}
-```
+## Structure Builder v2 Features
+
+### TF-Specific Configuration
+| TF | min_move | min_span | touch_tolerance |
+|----|----------|----------|-----------------|
+| 1H | 1.0% | 15 | 0.8% |
+| 4H | 1.5% | 20 | 1.0% |
+| 1D | 3.0% | 30 | 1.2% |
+| 7D | 5.0% | 40 | 1.5% |
+| 30D | 8.0% | 60 | 2.0% |
+| 180D | 12.0% | 80 | 2.5% |
+| 1Y | 20.0% | 120 | 3.0% |
+
+### Pipeline
+1. **filter_pivots()** - Remove small moves based on min_move %
+2. **extract_structure()** - Keep only swing highs/lows
+3. **separate_highs_lows()** - Split for pattern detection
+
+## Pattern Engine v3 Features
+
+### Line Fitting
+- Uses numpy `polyfit()` for regression
+- Not just connecting points
+
+### Touch Validation
+- Counts touches within tolerance
+- Minimum 2 touches required
+
+### Pattern Types
+- Triangles (ascending, descending, symmetrical)
+- Channels (ascending, descending, horizontal)
+- Double Top/Bottom
+- Head & Shoulders
+
+### Conflict Resolution
+- Triangle checked before Channel
+- More specific patterns preferred
 
 ## Key Files
 
 ### Backend
+- `/app/backend/modules/ta_engine/setup/structure_builder.py` - Structure Builder v2
+- `/app/backend/modules/ta_engine/setup/pattern_engine_v3.py` - Pattern Engine v3
 - `/app/backend/modules/ta_engine/setup/pattern_selector.py` - PSE v2.0
-- `/app/backend/modules/ta_engine/setup/pattern_candidate.py` - Score fields
 - `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py` - Geometry normalizer
-- `/app/backend/modules/ta_engine/per_tf_builder.py` - Main pipeline
 
 ### Frontend
-- `/app/frontend/src/modules/cockpit/components/PatternGeometryRenderer.jsx` - Renders primitives
-- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx` - Uses patternGeometry prop
+- `/app/frontend/src/modules/cockpit/components/PatternGeometryRenderer.jsx`
+- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx`
 
 ## Testing Results
+
+### 4H Timeframe
 ```
-[PatternSelector] Starting with 2 candidates
-[PatternSelector] HARD_GATE: descending_channel is forbidden (market_state)
-[PatternSelector] SURVIVOR ascending_triangle: final=0.71 (geo=0.75, ctx=0.57, rel=0.82, clar=0.67)
-[PatternSelector] WINNER: ascending_triangle final_score=0.71
+[StructureBuilder] Filtered pivots: 28 → 24 (min_move=0.015)
+[StructureBuilder] Structure points: 23
+[PatternV3] Double Top detected
+Pattern: ascending_triangle (score=0.71)
 ```
 
-## What Was Implemented
+### 7D Timeframe
+```
+[StructureBuilder] Filtered pivots: 14 → 10 (min_move=0.05)
+Pattern: falling_wedge (score=0.68)
+```
 
-| Date | Feature | Status |
-|------|---------|--------|
-| Mar 23, 2026 | Pattern Geometry Contract | DONE ✅ |
-| Mar 23, 2026 | Frontend data flow fix | DONE ✅ |
-| Mar 23, 2026 | PSE v2.0 cascade filtering | DONE ✅ |
-| Mar 23, 2026 | Hard gating (forbidden types) | DONE ✅ |
-| Mar 23, 2026 | Multi-score validation | DONE ✅ |
-| Mar 23, 2026 | Conflict resolution | DONE ✅ |
+### 30D+ Timeframes
+```
+[PatternV3] Not enough structure points
+Pattern: None (correct - insufficient data/touches)
+```
 
 ## Backlog
 
-### P0 - Done ✅
+### P0 - DONE ✅
 - [x] Pattern Geometry Contract
-- [x] Frontend rendering
-- [x] PSE v2.0 selection
-- [x] Cascade filtering
+- [x] PSE v2.0 cascade filtering
+- [x] Structure Builder v2 (TF-adaptive)
+- [x] Pattern Engine v3 (line fit + validation)
 
 ### P1 - Next
+- [ ] Visual confidence indicator on chart
 - [ ] Test on ETH, SOL
-- [ ] Add triple_top/triple_bottom detectors
-- [ ] Visual confidence bar on chart
+- [ ] Add pattern history tracking
 
 ### P2 - Future
-- [ ] Harmonic patterns
-- [ ] Candlestick patterns
-- [ ] Pattern backtesting
+- [ ] Harmonic pattern detectors
+- [ ] Candlestick pattern detectors

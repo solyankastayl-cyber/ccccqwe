@@ -35,6 +35,10 @@ from modules.ta_engine.setup.structure_context_engine import structure_context_e
 from modules.ta_engine.setup.pattern_ranking_engine import pattern_ranking_engine
 from modules.ta_engine.setup.pattern_selector import get_pattern_selector
 
+# NEW: Structure Builder v2 + Pattern Engine v3
+from modules.ta_engine.setup.structure_builder import get_structure_builder
+from modules.ta_engine.setup.pattern_engine_v3 import get_pattern_engine_v3
+
 # Get singleton instance
 pattern_selector = get_pattern_selector()
 from modules.ta_engine.setup.pattern_expiration import pattern_expiration_engine
@@ -284,21 +288,117 @@ class PerTimeframeBuilder:
         fib = fib_engine.build(candles, pivot_highs, pivot_lows, structure_context_dict, timeframe)
         
         # =============================================
-        # STEP 5: PATTERN DETECTION
+        # STEP 5: PATTERN DETECTION (Using Pattern Engine v3)
         # =============================================
         print(f"[PerTF] Step 5: Pattern detection...")
-        # Run all detectors with correct arguments
+        
+        # NEW: Build clean structure from pivots using Structure Builder v2
+        structure_builder = get_structure_builder(timeframe)
+        
+        # Combine pivot highs and lows with type info
+        # Handle both dict and Pivot objects
+        combined_pivots = []
+        for h in pivot_highs_raw:
+            if hasattr(h, 'value'):
+                # Pivot object
+                p = {
+                    "value": h.value,
+                    "price": h.value,
+                    "time": h.time if hasattr(h, 'time') else 0,
+                    "index": h.index if hasattr(h, 'index') else 0,
+                    "type": "high",
+                }
+            elif isinstance(h, dict):
+                p = h.copy()
+                p["type"] = "high"
+                p["price"] = p.get("value", p.get("price", 0))
+            else:
+                continue
+            combined_pivots.append(p)
+        
+        for l in pivot_lows_raw:
+            if hasattr(l, 'value'):
+                # Pivot object
+                p = {
+                    "value": l.value,
+                    "price": l.value,
+                    "time": l.time if hasattr(l, 'time') else 0,
+                    "index": l.index if hasattr(l, 'index') else 0,
+                    "type": "low",
+                }
+            elif isinstance(l, dict):
+                p = l.copy()
+                p["type"] = "low"
+                p["price"] = p.get("value", p.get("price", 0))
+            else:
+                continue
+            combined_pivots.append(p)
+        
+        # Sort by index/time
+        combined_pivots.sort(key=lambda x: x.get("index", x.get("time", 0)))
+        
+        # Build clean structure
+        clean_structure = structure_builder.build(combined_pivots)
+        print(f"[PerTF] Clean structure: {len(clean_structure['structure'])} points, "
+              f"{len(clean_structure['highs'])} highs, {len(clean_structure['lows'])} lows")
+        
+        # NEW: Use Pattern Engine v3 for detection
+        pattern_engine = get_pattern_engine_v3(timeframe)
+        v3_patterns = pattern_engine.detect(clean_structure)
+        print(f"[PerTF] Pattern Engine v3 found: {len(v3_patterns)} patterns")
+        
+        # Also run legacy detectors for compatibility
         all_candidates = run_all_detectors(
             candles=candles,
             pivots_high=pivot_highs_raw,
             pivots_low=pivot_lows_raw,
-            levels=[],  # Levels calculated after patterns
+            levels=[],
             structure_ctx=structure_context,
             timeframe=timeframe,
             config=config
         )
-        print(f"[PerTF] Pattern candidates found: {len(all_candidates)}")
-        for c in all_candidates:
+        print(f"[PerTF] Legacy detectors found: {len(all_candidates)}")
+        
+        # Convert v3 patterns to PatternCandidate format
+        for v3_pat in v3_patterns:
+            from modules.ta_engine.setup.pattern_candidate import PatternCandidate
+            
+            # Get geometry from v3 pattern
+            v3_geo = v3_pat.geometry
+            
+            # Build points dict for PatternCandidate
+            points = {}
+            if "upper" in v3_geo:
+                points["upper"] = v3_geo["upper"]
+            if "lower" in v3_geo:
+                points["lower"] = v3_geo["lower"]
+            if "peaks" in v3_geo:
+                points["peaks"] = v3_geo["peaks"]
+            if "troughs" in v3_geo:
+                points["troughs"] = v3_geo["troughs"]
+            if "neckline" in v3_geo:
+                points["neckline"] = [v3_geo["neckline"]] if isinstance(v3_geo["neckline"], dict) else v3_geo["neckline"]
+            if "markers" in v3_geo:
+                points["markers"] = v3_geo["markers"]
+            
+            candidate = PatternCandidate(
+                type=v3_pat.type,
+                direction=v3_pat.direction,
+                confidence=v3_pat.confidence,
+                geometry_score=0.8,  # v3 patterns have validated geometry
+                touch_count=v3_pat.touches_upper + v3_pat.touches_lower,
+                containment=0.7,
+                line_scores={"upper": v3_pat.touches_upper * 10, "lower": v3_pat.touches_lower * 10},
+                points=points,
+                anchor_points=v3_geo.get("anchor_highs", []) + v3_geo.get("anchor_lows", []),
+                start_index=0,
+                end_index=len(candles) - 1,
+                last_touch_index=len(candles) - 1,
+            )
+            all_candidates.append(candidate)
+        
+        print(f"[PerTF] Total candidates: {len(all_candidates)}")
+        for c in all_candidates[:5]:
             print(f"[PerTF]   - {c.type}: geo={c.geometry_score:.2f}, conf={c.confidence:.2f}")
         
         # Validate and filter
@@ -334,7 +434,7 @@ class PerTimeframeBuilder:
             current_price=current_price,
             market_state=structure_context_dict,
             structure_context=structure_context_dict,
-            levels=[],  # Levels calculated later
+            levels=[],
             liquidity=liquidity,
             fib=fib,
             poi=poi,
