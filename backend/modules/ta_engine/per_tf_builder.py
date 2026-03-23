@@ -462,6 +462,35 @@ class PerTimeframeBuilder:
         print(f"[PerTF] Pattern selected: {primary_pattern.type if primary_pattern else 'None'}")
         
         # =============================================
+        # STEP 5B: PATTERN RENDER CONTRACT V4
+        # =============================================
+        print(f"[PerTF] Step 5b: Building render contracts...")
+        try:
+            from modules.ta_engine.pattern.render_contract_builder import get_render_contract_builder
+            render_builder = get_render_contract_builder()
+            
+            # Build primary pattern render contract
+            pattern_render_contract = None
+            if primary_pattern:
+                pattern_render_contract = render_builder.build(
+                    primary_pattern.to_dict(),
+                    candles
+                )
+                print(f"[PerTF] Primary render contract: {pattern_render_contract.get('type') if pattern_render_contract else 'None'}")
+            
+            # Build alternative patterns render contracts
+            alt_render_contracts = []
+            for alt in (alternatives or []):
+                alt_contract = render_builder.build(alt.to_dict(), candles)
+                if alt_contract:
+                    alt_render_contracts.append(alt_contract)
+            print(f"[PerTF] Alternative contracts: {len(alt_render_contracts)}")
+        except Exception as e:
+            print(f"[PerTF] Render contract error: {e}")
+            pattern_render_contract = None
+            alt_render_contracts = []
+        
+        # =============================================
         # STEP 6: INDICATORS & TA CONTEXT
         # =============================================
         print(f"[PerTF] Step 6: Indicators...")
@@ -677,10 +706,12 @@ class PerTimeframeBuilder:
             "poi": poi,
             "fib": fib,
             
-            # Patterns
+            # Patterns — RENDER CONTRACT V4
             "primary_pattern": primary_pattern.to_dict() if primary_pattern else None,
             "pattern_geometry": normalize_pattern_geometry(primary_pattern.to_dict()) if primary_pattern else None,
+            "pattern_render_contract": pattern_render_contract,  # NEW: render-ready geometry
             "alternative_patterns": [a.to_dict() for a in alternatives] if alternatives else [],
+            "alternative_render_contracts": alt_render_contracts,  # NEW: alternatives render-ready
             
             # Indicators (convert IndicatorSignal objects to dicts)
             "indicator_result": [s.to_dict() if hasattr(s, 'to_dict') else s for s in indicator_result] if indicator_result else [],

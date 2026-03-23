@@ -27,6 +27,8 @@ import ExecutionRenderer from './ExecutionRenderer';
 import { renderPatternGeometry } from './PatternGeometryRenderer';
 import { renderExecutionLayer } from './ExecutionVisualLayer';
 import SetupOverlay from './SetupOverlay';
+// V4 Pattern Renderer
+import { renderPattern, clearPattern } from '../../../chart/renderers/patternRenderer';
 
 const ChartWrapper = styled.div`
   position: relative;
@@ -286,6 +288,8 @@ const ResearchChart = ({
   candles = [],
   // PRIMARY SOURCE: render_plan from backend (single source of truth)
   renderPlan = null,
+  // V4 RENDER CONTRACT — for clean TA pattern formations
+  data = null,
   // TA MODE — controls layer visibility (Auto/Classic/Smart/Minimal)
   mode = 'auto',
   // TRADE SETUP OVERLAY — Entry/Stop/TP visualization (NEW!)
@@ -1201,13 +1205,36 @@ const ResearchChart = ({
     // =========================================================
     // 4.5 PATTERN GEOMETRY — Primary Visual Element
     // =========================================================
-    // Draw pattern shapes DIRECTLY ON CANDLES (not in panels)
-    // Priority: Pattern > Structure > Indicators
-    // Use patternGeometry (normalized geometry contract) if available
+    // NEW: Use pattern_render_contract (v4) if available
+    // Fallback: Use old patternGeometry
+    const renderContract = data?.pattern_render_contract;
     const geometryToRender = patternGeometry || patternV2?.primary_pattern;
-    if (geometryToRender?.geometry && showPatternOverlay) {
+    
+    if (renderContract && showPatternOverlay) {
+      // V4 RENDER CONTRACT — clean TA formations
       try {
-        console.log('[ResearchChart] Rendering pattern geometry:', geometryToRender.type);
+        console.log('[ResearchChart] Using V4 render contract:', renderContract.type, renderContract);
+        
+        // Clear previous pattern
+        if (window._patternRenderObjects) {
+          clearPattern(chart, window._patternRenderObjects);
+        }
+        
+        // Render new pattern
+        window._patternRenderObjects = renderPattern(chart, priceSeries, renderContract, {
+          boundaryColor: '#3B82F6',
+          necklineColor: '#EF4444',
+          breakoutColor: '#10B981',
+        });
+        
+        console.log('[ResearchChart] V4 pattern rendered:', window._patternRenderObjects);
+      } catch (e) {
+        console.warn('[ResearchChart] V4 pattern render failed:', e);
+      }
+    } else if (geometryToRender?.geometry && showPatternOverlay) {
+      // LEGACY: Use old patternGeometry renderer
+      try {
+        console.log('[ResearchChart] Rendering pattern geometry (legacy):', geometryToRender.type);
         const patternSeries = renderPatternGeometry(chart, geometryToRender, priceSeries, mapped);
         console.log('[ResearchChart] Pattern geometry rendered, series count:', patternSeries?.length);
         // Pattern series are added to chart by renderPatternGeometry

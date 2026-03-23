@@ -622,6 +622,9 @@ const ResearchView = () => {
   // Active pattern for switching between primary/alternatives
   const [activePatternId, setActivePatternId] = useState('primary');
   
+  // Pattern index for V4 render contract switching (0 = primary, 1+ = alternatives)
+  const [patternIndex, setPatternIndex] = useState(0);
+  
   // Layer visibility now controlled by viewMode through layerVisibilityComputed
   // Removed manual layerVisibility state to avoid duplication
   
@@ -1614,6 +1617,34 @@ const ResearchView = () => {
               <Triangle size={13} />
               Pattern
             </CollapsibleButton>
+            
+            {/* PATTERN SWITCHER — V4: Switch between primary and alternatives */}
+            {showPatternOverlay && setupData?.alternative_render_contracts?.length > 0 && (
+              <button
+                data-testid="pattern-switcher-btn"
+                onClick={() => {
+                  const totalPatterns = 1 + (setupData?.alternative_render_contracts?.length || 0);
+                  setPatternIndex((patternIndex + 1) % totalPatterns);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '4px',
+                  color: '#f1f5f9',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+                title="Switch between detected patterns"
+              >
+                {patternIndex + 1}/{1 + (setupData?.alternative_render_contracts?.length || 0)}
+              </button>
+            )}
+            
             <CollapsibleButton
               $active={showSetupOverlay}
               onClick={() => setShowSetupOverlay(!showSetupOverlay)}
@@ -1714,6 +1745,13 @@ const ResearchView = () => {
             candles={candles}
             // PRIMARY DATA SOURCE: render_plan from backend
             renderPlan={renderPlan}
+            // V4 RENDER CONTRACT — pattern_render_contract for clean TA formations
+            data={{
+              pattern_render_contract: patternIndex === 0 
+                ? setupData?.pattern_render_contract 
+                : setupData?.alternative_render_contracts?.[patternIndex - 1],
+              alternative_render_contracts: setupData?.alternative_render_contracts,
+            }}
             // TA MODE — controls layer visibility (Auto/Classic/Smart/Minimal)
             mode={viewMode}
             // TRADE SETUP — generated from confluence analysis (toggle with showSetupOverlay)
