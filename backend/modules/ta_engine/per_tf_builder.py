@@ -635,12 +635,36 @@ class PerTimeframeBuilder:
         elapsed = time_module.time() - start_time
         print(f"[PerTF] Build completed in {elapsed:.2f}s")
         
+        # Get interpretation from InterpretationEngine
+        try:
+            from modules.ta_engine.interpretation.interpretation_engine import get_interpretation_engine
+            from modules.ta_engine.mtf_engine import MTFEngine
+            ie = get_interpretation_engine()
+            tf_role = MTFEngine.classify_tf(timeframe)
+            
+            # Build data dict for interpretation
+            interp_data = {
+                "trend": structure_context_dict.get("bias", "neutral"),
+                "regime": structure_context_dict.get("regime", "unknown"),
+                "pattern": primary_pattern.to_dict() if primary_pattern else None,
+                "structure": structure_context_dict,
+                "levels": (render_plan.get("levels", []) if render_plan else []),
+            }
+            interpretation = ie.interpret(tf_role, interp_data)
+            print(f"[PerTF] Interpretation: {interpretation[:80]}...")
+        except Exception as e:
+            print(f"[PerTF] Interpretation error: {e}")
+            interpretation = None
+        
         return {
             "timeframe": timeframe,
             "symbol": symbol,
             "candles": candles,
             "candle_count": len(candles),
             "current_price": current_price,
+            
+            # INTERPRETATION — human-readable TA analysis
+            "interpretation": interpretation,
             
             # Structure (use dict, not object)
             "structure_context": structure_context_dict,

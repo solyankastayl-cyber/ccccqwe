@@ -427,6 +427,10 @@ class MTFEngine:
         Returns:
             MTF analysis with per-TF results and global summary
         """
+        # Import interpretation engine
+        from modules.ta_engine.interpretation.interpretation_engine import get_interpretation_engine
+        ie = get_interpretation_engine()
+        
         analyses = {}
         
         for tf, data in tf_map.items():
@@ -439,10 +443,33 @@ class MTFEngine:
             else:  # ltf
                 analyses[tf] = self._build_ltf_analysis(tf, data)
             
+            # ADD INTERPRETATION — always provide meaningful analysis text
+            tf_data = analyses[tf].to_dict()
+            interpretation = ie.interpret(role, tf_data)
+            analyses[tf].message = interpretation  # Override with rich interpretation
+            
             print(f"[MTFEngine] {tf} ({role}): trend={analyses[tf].trend}, "
                   f"pattern={'YES' if analyses[tf].pattern else 'NO'}")
         
         summary = self._build_global_summary(analyses)
+        
+        # Add interpretation summary
+        htf_data = None
+        mtf_data = None
+        ltf_data = None
+        
+        for tf in ["1Y", "6M", "1M", "180D", "30D"]:
+            if tf in analyses:
+                htf_data = analyses[tf].to_dict()
+                break
+        for tf in ["7D", "1D"]:
+            if tf in analyses:
+                mtf_data = analyses[tf].to_dict()
+                break
+        if "4H" in analyses:
+            ltf_data = analyses["4H"].to_dict()
+        
+        summary["summary_text"] = ie.build_one_line_summary(htf_data, mtf_data, ltf_data)
         
         return {
             "analyses": {tf: a.to_dict() for tf, a in analyses.items()},

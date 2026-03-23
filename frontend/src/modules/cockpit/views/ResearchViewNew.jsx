@@ -564,6 +564,16 @@ const SYMBOLS = [
 const TIMEFRAMES = ['4H', '1D', '7D', '30D', '180D', '1Y'];
 const MTF_TIMEFRAMES = ['1D', '4H', '1H']; // Available MTF timeframes
 
+// TF Display Names — human-readable labels
+const TF_DISPLAY_NAMES = {
+  '4H': '4H',
+  '1D': '1D',
+  '7D': '7D',
+  '30D': '1M',   // 30D → 1M for clarity
+  '180D': '6M',  // 180D → 6M for clarity
+  '1Y': '1Y',
+};
+
 // ============================================
 // COMPONENT
 // ============================================
@@ -1531,7 +1541,7 @@ const ResearchView = () => {
                 onClick={() => setSelectedTF(tf)}
                 data-testid={`tf-${tf}`}
               >
-                {tf}
+                {TF_DISPLAY_NAMES[tf] || tf}
               </TfButton>
             ))}
           </TfGroup>
@@ -1628,6 +1638,66 @@ const ResearchView = () => {
 
       {/* Main Content */}
       <MainContent>
+        {/* ════════════════════════════════════════════════════════════════ */}
+        {/* MTF SUMMARY BAR — One-line TA summary above chart */}
+        {/* ════════════════════════════════════════════════════════════════ */}
+        {mtfContext?.summary?.summary_text && (
+          <div 
+            data-testid="mtf-summary-bar"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: '#0f172a',
+              borderRadius: '8px',
+              marginBottom: '12px',
+            }}
+          >
+            <span style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#ffffff',
+              letterSpacing: '0.3px',
+            }}>
+              {mtfContext.summary.summary_text}
+            </span>
+          </div>
+        )}
+        
+        {/* Per-TF Interpretation Panel — shows interpretation for selected TF */}
+        {setupData?.interpretation && (
+          <div 
+            data-testid="tf-interpretation"
+            style={{
+              padding: '12px 16px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              marginBottom: '12px',
+            }}
+          >
+            <div style={{
+              fontSize: '10px',
+              fontWeight: '700',
+              color: '#64748b',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '6px',
+            }}>
+              {TF_DISPLAY_NAMES[selectedTF] || selectedTF} ANALYSIS
+            </div>
+            <div style={{
+              fontSize: '13px',
+              color: '#0f172a',
+              lineHeight: '1.5',
+            }}>
+              {setupData.interpretation}
+            </div>
+          </div>
+        )}
+        
         {/* Error Banner */}
         {error && (
           <ErrorBanner>
@@ -1833,8 +1903,8 @@ const ResearchView = () => {
                 </div>
               </div>
               
-              {/* Summary text — Research language */}
-              {decision.summary && (
+              {/* Summary text — Research language (use interpretation if available) */}
+              {(setupData?.interpretation || decision?.summary) && (
                 <div style={{
                   marginTop: '12px',
                   padding: '10px',
@@ -1844,8 +1914,8 @@ const ResearchView = () => {
                   color: '#475569',
                   lineHeight: '1.5',
                 }}>
-                  {/* Transform trading language to research language */}
-                  {decision.summary
+                  {/* Prefer interpretation from backend, fallback to decision.summary with transforms */}
+                  {setupData?.interpretation || (decision.summary
                     .replace(/watch long/gi, 'bullish conditions developing')
                     .replace(/watch short/gi, 'bearish conditions developing')
                     .replace(/look for long entries/gi, 'upside momentum forming')
@@ -1853,7 +1923,9 @@ const ResearchView = () => {
                     .replace(/no clear action/gi, 'No clear directional signal')
                     .replace(/observe and wait/gi, 'Structure remains mixed')
                     .replace(/tradeability/gi, 'setup quality')
-                  }
+                    .replace(/no trade/gi, 'structure developing')
+                    .replace(/invalid/gi, 'not yet confirmed')
+                  )}
                 </div>
               )}
             </div>

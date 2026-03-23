@@ -335,6 +335,40 @@ async def get_mtf_analysis(
             entry_tf=entry_tf,
         )
         
+        # Add interpretation summary_text for frontend
+        try:
+            from modules.ta_engine.interpretation.interpretation_engine import get_interpretation_engine
+            ie = get_interpretation_engine()
+            
+            # Get data from each TF role
+            htf_data = None
+            mtf_data = None
+            ltf_data = None
+            
+            for tf in ["1Y", "6M", "180D", "30D", "1M"]:
+                if tf in tf_map and tf_map[tf].get("candles"):
+                    htf_data = tf_map[tf]
+                    break
+            for tf in ["7D", "1D"]:
+                if tf in tf_map and tf_map[tf].get("candles"):
+                    mtf_data = tf_map[tf]
+                    break
+            if "4H" in tf_map and tf_map["4H"].get("candles"):
+                ltf_data = tf_map["4H"]
+            
+            # Build one-line summary
+            summary_text = ie.build_one_line_summary(htf_data, mtf_data, ltf_data)
+            
+            # Ensure mtf_context has summary dict with summary_text
+            if isinstance(mtf_context, dict):
+                mtf_context["summary"] = {
+                    "text": mtf_context.get("summary", ""),
+                    "summary_text": summary_text,
+                }
+            print(f"[MTF] Summary text: {summary_text}")
+        except Exception as e:
+            print(f"[MTF] Failed to build summary_text: {e}")
+        
         result = {
             "ok": True,
             "symbol": normalized_symbol,
