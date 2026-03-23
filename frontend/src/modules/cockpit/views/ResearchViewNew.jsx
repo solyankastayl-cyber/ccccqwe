@@ -802,7 +802,31 @@ const ResearchView = () => {
   // v2 returns: { primary_pattern, alternative_patterns, decision, scenarios, confidence_explanation, ... }
   
   // Get pattern based on activePatternId
-  const primaryPattern = setupData?.primary_pattern;
+  // PRIORITY: Use pattern_render_contract (anchor-based) if available
+  const renderContract = setupData?.pattern_render_contract;
+  const legacyPrimaryPattern = setupData?.primary_pattern;
+  
+  // Build unified pattern object from render contract
+  const primaryPattern = React.useMemo(() => {
+    if (renderContract) {
+      // Use anchor-based pattern data - OVERRIDE legacy values
+      return {
+        // Legacy data as fallback
+        ...(legacyPrimaryPattern || {}),
+        // OVERRIDE with render contract values (anchor-based)
+        type: renderContract.type,
+        direction: renderContract.direction,
+        final_score: renderContract.confidence,
+        touch_score: renderContract.touch_score,
+        render_quality: renderContract.render_quality,
+        breakout_level: renderContract.render?.levels?.[0]?.price,
+        invalidation: null,
+        anchor_points: renderContract.anchors,
+      };
+    }
+    return legacyPrimaryPattern;
+  }, [renderContract, legacyPrimaryPattern]);
+  
   const alternativePatterns = setupData?.alternative_patterns || [];
   
   // Determine which pattern to display on chart
@@ -1845,8 +1869,8 @@ const ResearchView = () => {
                   : []
               )
             }
-            // Pattern Engine V2 - use primary_pattern from API
-            patternV2={{ primary_pattern: setupData?.primary_pattern, alternative_patterns: setupData?.alternative_patterns }}
+            // Pattern Engine V2 - USE UNIFIED primaryPattern (from render_contract if available)
+            patternV2={{ primary_pattern: primaryPattern, alternative_patterns: alternativePatterns }}
             // Pattern Geometry - DISABLED when V4 render contract available
             patternGeometry={setupData?.pattern_render_contract ? null : setupData?.pattern_geometry}
             // Fibonacci - use from per-TF pipeline

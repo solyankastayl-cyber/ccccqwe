@@ -462,31 +462,42 @@ class PerTimeframeBuilder:
         print(f"[PerTF] Pattern selected: {primary_pattern.type if primary_pattern else 'None'}")
         
         # =============================================
-        # STEP 5B: PATTERN RENDER CONTRACT V4
+        # STEP 5B: PATTERN RENDER CONTRACT V5 (ANCHOR-BASED)
         # =============================================
-        print(f"[PerTF] Step 5b: Building render contracts...")
+        print(f"[PerTF] Step 5b: Building anchor-based pattern...")
         try:
-            from modules.ta_engine.pattern.render_contract_builder import get_render_contract_builder
-            render_builder = get_render_contract_builder()
+            # NEW: Use Anchor-Based Pattern Builder instead of regression
+            from modules.ta_engine.pattern.anchor_pattern_builder import get_anchor_pattern_builder
+            anchor_builder = get_anchor_pattern_builder()
             
-            # Build primary pattern render contract
-            pattern_render_contract = None
-            if primary_pattern:
-                pattern_render_contract = render_builder.build(
-                    primary_pattern.to_dict(),
-                    candles
-                )
-                print(f"[PerTF] Primary render contract: {pattern_render_contract.get('type') if pattern_render_contract else 'None'}")
+            # Build pattern using anchor-based approach
+            pattern_render_contract = anchor_builder.build(candles)
             
-            # Build alternative patterns render contracts
+            if pattern_render_contract:
+                print(f"[PerTF] Anchor pattern: {pattern_render_contract.get('type')} "
+                      f"touch={pattern_render_contract.get('touch_score', 0):.2f} "
+                      f"quality={pattern_render_contract.get('render_quality', 0):.2f}")
+            else:
+                print(f"[PerTF] No valid anchor-based pattern found")
+                # Fallback to old render contract if anchor pattern failed
+                from modules.ta_engine.pattern.render_contract_builder import get_render_contract_builder
+                render_builder = get_render_contract_builder()
+                if primary_pattern:
+                    pattern_render_contract = render_builder.build(
+                        primary_pattern.to_dict(),
+                        candles
+                    )
+                    if pattern_render_contract:
+                        print(f"[PerTF] Fallback contract: {pattern_render_contract.get('type')}")
+            
+            # Alternative contracts (keep old approach for now)
             alt_render_contracts = []
-            for alt in (alternatives or []):
-                alt_contract = render_builder.build(alt.to_dict(), candles)
-                if alt_contract:
-                    alt_render_contracts.append(alt_contract)
-            print(f"[PerTF] Alternative contracts: {len(alt_render_contracts)}")
+            # TODO: Build alternatives with anchor approach
+            
         except Exception as e:
-            print(f"[PerTF] Render contract error: {e}")
+            print(f"[PerTF] Pattern build error: {e}")
+            import traceback
+            traceback.print_exc()
             pattern_render_contract = None
             alt_render_contracts = []
         
