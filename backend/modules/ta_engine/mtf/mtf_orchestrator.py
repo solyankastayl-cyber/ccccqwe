@@ -1,46 +1,35 @@
 """
-MTF Orchestrator
-================
+MTF Orchestrator v2.0
+=====================
 
-Multi-Timeframe Orchestration Layer.
+Multi-Timeframe Orchestration Layer with ROLE-BASED analysis.
 
-NOT mixing signals — HIERARCHICAL context:
-  HTF → bias layer (1D/30D/180D)
-  MTF → setup layer (4H/1D)
-  LTF → entry layer (1H/4H)
+TF Roles:
+  HTF (1M, 6M, 1Y) → CONTEXT (trend, regime, major levels)
+  MTF (1D, 7D) → PATTERNS (main TA layer)
+  LTF (4H) → DETAIL (local patterns, confirmation)
 
-Each timeframe is its own world.
-Orchestrator only combines CONTEXTS, not signals.
+Key principle: Each TF has its own role, not all TFs need patterns.
 
-Output:
-  {
-    "bias_tf": "1D",
-    "setup_tf": "4H", 
-    "entry_tf": "1H",
-    "global_bias": "bearish",
-    "alignment": "counter_trend",
-    "tradeability": "low",
-    "summary": "...",
-    "timeframes": {...}
-  }
+NO PATTERN on HTF is NOT an error — it's valid.
 """
 
 from __future__ import annotations
 from typing import Dict, Any, Optional
+
+# Import new MTF Engine
+from modules.ta_engine.mtf_engine import get_mtf_engine, MTFEngine
 
 
 class MTFOrchestrator:
     """
     Orchestrates multiple timeframe contexts into one coherent view.
     
-    Key principle:
-    - HTF controls direction filter
-    - MTF selects setup
-    - LTF refines entry
-    
-    Does NOT mix indicators/patterns across TFs.
-    Only provides alignment and tradeability assessment.
+    v2.0: Uses MTF Engine for role-based analysis.
     """
+    
+    # TF Role classification
+    TF_ROLES = MTFEngine.TF_ROLES
 
     def build(
         self,
@@ -52,12 +41,13 @@ class MTFOrchestrator:
         """
         Build MTF orchestration from per-timeframe TA data.
         
-        Args:
-            tf_map: Dict of {timeframe: ta_payload}
-            bias_tf: Higher timeframe for direction bias
-            setup_tf: Setup timeframe for pattern/setup selection
-            entry_tf: Lower timeframe for entry refinement
+        Uses MTF Engine v1.0 for role-based analysis.
         """
+        # Run MTF Engine analysis
+        mtf_engine = get_mtf_engine()
+        mtf_analysis = mtf_engine.analyze(tf_map)
+        
+        # Legacy compatibility
         htf = tf_map.get(bias_tf, {})
         stf = tf_map.get(setup_tf, {})
         ltf = tf_map.get(entry_tf, {})
@@ -89,6 +79,8 @@ class MTFOrchestrator:
                 setup_tf: self._compact(stf, setup_tf),
                 entry_tf: self._compact(ltf, entry_tf),
             },
+            # NEW: MTF Engine v2 analysis
+            "mtf_analysis": mtf_analysis,
         }
 
     def _extract_bias(self, tf_payload: Dict[str, Any]) -> str:
@@ -117,25 +109,16 @@ class MTFOrchestrator:
         return "neutral"
 
     def _compute_alignment(self, global_bias: str, setup_bias: str, entry_bias: str) -> str:
-        """
-        Compute alignment between timeframes.
-        
-        aligned: all TFs agree
-        counter_trend: setup against HTF
-        mixed: no clear alignment
-        """
+        """Compute alignment between timeframes."""
         if global_bias == "neutral":
             return "mixed"
         
-        # Perfect alignment
         if setup_bias == global_bias and entry_bias in {global_bias, "neutral"}:
             return "aligned"
         
-        # Setup against HTF bias
         if setup_bias != "neutral" and setup_bias != global_bias:
             return "counter_trend"
         
-        # Entry against but setup aligned
         if setup_bias == global_bias and entry_bias != "neutral" and entry_bias != global_bias:
             return "mixed"
         
@@ -148,32 +131,21 @@ class MTFOrchestrator:
         entry: Optional[Dict[str, Any]],
         alignment: str,
     ) -> str:
-        """
-        Compute overall tradeability score.
-        
-        high: aligned + valid setup + valid entry
-        medium: some conditions met
-        low: counter-trend or missing validations
-        """
-        # No valid setup = low
+        """Compute overall tradeability score."""
         if not setup or not setup.get("valid", False):
             return "low"
         
-        # Check entry
         entry_valid = False
         if entry:
             primary = entry.get("primary", {})
             entry_valid = primary.get("valid", False)
         
-        # Perfect conditions
         if alignment == "aligned" and global_bias != "neutral" and entry_valid:
             return "high"
         
-        # Good setup but no entry yet
         if alignment == "aligned" and global_bias != "neutral":
             return "medium"
         
-        # Counter-trend = always low
         if alignment == "counter_trend":
             return "low"
         
@@ -189,10 +161,8 @@ class MTFOrchestrator:
         """Build human-readable summary."""
         parts = []
         
-        # HTF bias
         parts.append(f"Higher timeframe {global_bias}")
         
-        # Setup pattern
         pattern = (stf.get("primary_pattern") or stf.get("pattern_v2", {}).get("primary_pattern") or {}).get("type")
         if pattern:
             pattern_bias = (stf.get("primary_pattern") or {}).get("direction_bias", "")
@@ -201,13 +171,11 @@ class MTFOrchestrator:
             else:
                 parts.append(f"setup shows {pattern}")
         
-        # Entry direction
         entry_setup = (ltf.get("trade_setup") or {}).get("primary") or {}
         entry_dir = entry_setup.get("direction")
         if entry_dir:
             parts.append(f"entry favors {entry_dir}")
         
-        # Alignment
         if alignment == "counter_trend":
             parts.append("WARNING: counter-trend setup")
         elif alignment == "aligned":
@@ -220,8 +188,12 @@ class MTFOrchestrator:
         decision = payload.get("decision", {})
         pattern = payload.get("primary_pattern") or (payload.get("pattern_v2") or {}).get("primary_pattern")
         
+        # Add role info
+        role = self.TF_ROLES.get(tf, "mtf")
+        
         return {
             "timeframe": tf,
+            "role": role,  # NEW: TF role
             "bias": self._extract_bias(payload),
             "regime": (payload.get("structure_context") or {}).get("regime"),
             "pattern": {
