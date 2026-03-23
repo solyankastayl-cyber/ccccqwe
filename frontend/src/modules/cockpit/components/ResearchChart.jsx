@@ -331,6 +331,9 @@ const ResearchChart = ({
   chartStructure = null,
   showFibonacciOverlay = true,
   showPatternOverlay = true,
+  // PATTERN VIEW MODE — for isolated pattern display
+  patternViewMode = false,
+  patternWindow = null,
 }) => {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -1364,8 +1367,27 @@ const ResearchChart = ({
       });
     }
     
-    // Fit content
-    chart.timeScale().fitContent();
+    // =========================================================
+    // PATTERN ZOOM — Center chart on pattern window when in Pattern View mode
+    // =========================================================
+    if (patternViewMode && patternWindow && patternWindow.start && patternWindow.end) {
+      console.log('[ResearchChart] Pattern View mode: zooming to pattern window', patternWindow);
+      
+      // Add padding to window (10% on each side)
+      const windowDuration = patternWindow.end - patternWindow.start;
+      const padding = windowDuration * 0.15;
+      
+      const from = patternWindow.start - padding;
+      const to = patternWindow.end + padding;
+      
+      chart.timeScale().setVisibleRange({
+        from: from,
+        to: to,
+      });
+    } else {
+      // Normal: Fit content
+      chart.timeScale().fitContent();
+    }
 
     // Resize observer
     const ro = new ResizeObserver(() => {
@@ -1395,7 +1417,7 @@ const ResearchChart = ({
         chartInstanceRef.current = null;
       }
     };
-  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, patternGeometry, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow, data]);
+  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, patternGeometry, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow, data, patternViewMode, patternWindow]);
 
   const direction = pattern?.direction || setup?.direction || 'neutral';
   const confidence = pattern?.total_score || pattern?.confidence || setup?.confidence || 0;

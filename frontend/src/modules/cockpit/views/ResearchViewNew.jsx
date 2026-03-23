@@ -610,6 +610,10 @@ const ResearchView = () => {
   const [showPatternOverlay, setShowPatternOverlay] = useState(false);
   const [showSetupOverlay, setShowSetupOverlay] = useState(false);
   
+  // PATTERN VIEW MODE — isolates pattern for readability
+  // When true: hide structure, levels, indicators — show only candles + pattern
+  const [patternViewMode, setPatternViewMode] = useState(false);
+  
   // Data - NEW: MTF data structure
   const [tfMap, setTfMap] = useState({});
   const [mtfContext, setMtfContext] = useState(null);
@@ -1494,12 +1498,26 @@ const ResearchView = () => {
   const patternStyle = getLayerStyle('pattern_primary');
   const fibStyle = getLayerStyle('fib');
 
-  // Determine what to show based on view mode (unified - using layerVisibilityComputed only)
+  // ═══════════════════════════════════════════════════════════════
+  // PATTERN VIEW MODE — isolates pattern for readability
+  // When active: hide structure, levels, indicators, liquidity
+  // Keep: candles + active pattern + breakout/neckline
+  // ═══════════════════════════════════════════════════════════════
+  
+  // Determine what to show based on view mode
+  // PATTERN VIEW MODE overrides normal visibility settings
   const showPatterns = viewMode !== 'clean' && layerVisibilityComputed.patterns;
-  const showLevels = layerVisibilityComputed.levels !== false;
-  const showStructure = layerVisibilityComputed.structure;
-  const showIndicators = viewMode === 'manual';
-  const showBaseLayer = viewMode !== 'minimal';
+  const showLevels = patternViewMode ? false : (layerVisibilityComputed.levels !== false);
+  const showStructure = patternViewMode ? false : layerVisibilityComputed.structure;
+  const showIndicators = patternViewMode ? false : (viewMode === 'manual');
+  const showBaseLayer = patternViewMode ? true : (viewMode !== 'minimal');
+  
+  // Additional visibility controls for Pattern View mode
+  const showMarketMechanicsComputed = patternViewMode ? false : (viewMode !== 'classic');
+  const showLiquidityComputed = patternViewMode ? false : layerVisibilityComputed.liquidity;
+  const showPOIComputed = patternViewMode ? false : layerVisibilityComputed.poi;
+  const showSweepsComputed = patternViewMode ? false : layerVisibilityComputed.liquidity;
+  const showCHOCHComputed = patternViewMode ? false : layerVisibilityComputed.structure;
 
   return (
     <Container data-testid="research-view">
@@ -1617,6 +1635,32 @@ const ResearchView = () => {
               <Triangle size={13} />
               Pattern
             </CollapsibleButton>
+            
+            {/* PATTERN VIEW MODE — Isolates pattern for readability */}
+            {showPatternOverlay && setupData?.pattern_render_contract && (
+              <button
+                data-testid="pattern-view-btn"
+                onClick={() => setPatternViewMode(!patternViewMode)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  background: patternViewMode ? '#3b82f6' : '#1e293b',
+                  border: `1px solid ${patternViewMode ? '#3b82f6' : '#334155'}`,
+                  borderRadius: '4px',
+                  color: '#f1f5f9',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Pattern View Mode — isolates pattern, hides structure/levels"
+              >
+                <Eye size={12} />
+                {patternViewMode ? 'View ON' : 'View'}
+              </button>
+            )}
             
             {/* PATTERN SWITCHER — V4: Switch between primary and alternatives */}
             {showPatternOverlay && setupData?.alternative_render_contracts?.length > 0 && (
@@ -1780,26 +1824,26 @@ const ResearchView = () => {
             showBaseLayer={showBaseLayer}
             showStructure={showStructure}
             showTargets={false}
-            showExecutionOverlay={execution?.valid || layerVisibilityComputed.trade_setup}
-            // Market Mechanics toggles - controlled by visibility engine
-            showMarketMechanics={viewMode !== 'classic'}
-            showPOI={layerVisibilityComputed.poi}
-            showLiquidity={layerVisibilityComputed.liquidity}
-            showSweeps={layerVisibilityComputed.sweep_markers}
-            showCHOCH={layerVisibilityComputed.choch}
-            showNarrative={viewMode !== 'minimal'}
+            showExecutionOverlay={patternViewMode ? false : (execution?.valid || layerVisibilityComputed.trade_setup)}
+            // Market Mechanics toggles - HIDDEN in Pattern View mode
+            showMarketMechanics={showMarketMechanicsComputed}
+            showPOI={showPOIComputed}
+            showLiquidity={showLiquidityComputed}
+            showSweeps={showSweepsComputed}
+            showCHOCH={showCHOCHComputed}
+            showNarrative={patternViewMode ? false : (viewMode !== 'minimal')}
             decision={decision}
-            // Indicator Overlays - filtered by selection and mode
-            // Classic/Auto mode: show selected indicators + fallback to user selection
+            // Indicator Overlays - HIDDEN in Pattern View mode
             indicatorOverlays={
-              layerVisibilityComputed.indicators_overlay
-                ? (setupData?.indicators?.overlays || [])
-                    .filter(o => {
-                      // ALWAYS use user selection (selectedOverlays) - gives user control
-                      return selectedOverlays.includes(o.id);
-                    })
-                    .slice(0, limits.overlays)
-                : []
+              patternViewMode ? [] : (
+                layerVisibilityComputed.indicators_overlay
+                  ? (setupData?.indicators?.overlays || [])
+                      .filter(o => {
+                        return selectedOverlays.includes(o.id);
+                      })
+                      .slice(0, limits.overlays)
+                  : []
+              )
             }
             // Pattern Engine V2 - use primary_pattern from API
             patternV2={{ primary_pattern: setupData?.primary_pattern, alternative_patterns: setupData?.alternative_patterns }}
@@ -1808,8 +1852,11 @@ const ResearchView = () => {
             // Fibonacci - use from per-TF pipeline
             fibonacci={fib || setupData?.fibonacci}
             // Toggle overlays visibility via buttons
-            showFibonacciOverlay={showFibonacciOverlay}
+            showFibonacciOverlay={patternViewMode ? false : showFibonacciOverlay}
             showPatternOverlay={showPatternOverlay}
+            // Pattern View Mode — for zoom to pattern window
+            patternViewMode={patternViewMode}
+            patternWindow={setupData?.pattern_render_contract?.window}
           />
           {loading && (
             <LoadingOverlay>

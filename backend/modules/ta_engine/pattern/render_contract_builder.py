@@ -562,8 +562,42 @@ class PatternRenderContractBuilder:
         Extract pattern time window.
         
         CRITICAL: Pattern must live inside bounded window, not span entire chart.
+        Use anchor_points to determine actual pattern boundaries.
         """
-        # Try to get from pattern directly
+        # Try to get from anchor_points first (most accurate)
+        anchor_points = pattern.get("anchor_points", {})
+        upper_pts = anchor_points.get("upper", [])
+        lower_pts = anchor_points.get("lower", [])
+        
+        all_times = []
+        for pt in upper_pts + lower_pts:
+            t = pt.get("time")
+            if t:
+                all_times.append(t)
+        
+        if all_times:
+            # Use actual anchor point times
+            start_time = min(all_times)
+            end_time = max(all_times)
+            
+            # Find indices
+            start_idx = 0
+            end_idx = len(candles) - 1
+            for i, c in enumerate(candles):
+                c_time = c.get("time", c.get("timestamp", 0))
+                if c_time <= start_time:
+                    start_idx = i
+                if c_time <= end_time:
+                    end_idx = i
+            
+            return {
+                "start": start_time,
+                "end": end_time,
+                "start_index": start_idx,
+                "end_index": end_idx,
+            }
+        
+        # Fallback to pattern indices
         start_idx = pattern.get("start_index", 0)
         end_idx = pattern.get("end_index", len(candles) - 1)
         
