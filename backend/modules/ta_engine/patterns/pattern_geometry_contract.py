@@ -106,8 +106,8 @@ class PatternGeometry:
                 for s in self.segments
             ],
             "levels": [
-                {"kind": l.kind, "price": l.price, "label": l.label, "style": l.style, "color": l.color}
-                for l in self.levels
+                {"kind": lvl.kind, "price": lvl.price, "label": lvl.label, "style": lvl.style, "color": lvl.color}
+                for lvl in self.levels
             ],
             "zones": [
                 {"kind": z.kind, "time_start": z.time_start, "time_end": z.time_end, 
@@ -121,102 +121,244 @@ class PatternGeometry:
         }
 
 
+# =====================================================
+# HELPER FUNCTIONS for format normalization
+# =====================================================
+
+def _get_time(p: Dict) -> int:
+    """Extract time from point dict, handling various field names."""
+    if not p:
+        return 0
+    t = p.get("time", p.get("timestamp", 0))
+    return int(t) if t else 0
+
+
+def _get_price(p: Dict) -> float:
+    """Extract price from point dict, handling various field names."""
+    if not p:
+        return 0.0
+    return float(p.get("price", p.get("value", 0)))
+
+
+def _to_point(p: Dict) -> Dict:
+    """Convert any point format to standard {time, price}."""
+    return {"time": _get_time(p), "price": _get_price(p)}
+
+
+def _normalize_points_format(raw_points: Any, pattern_type: str) -> Dict:
+    """
+    Convert LIST-based points (from DetectedPattern) to DICT format.
+    
+    Input formats:
+    1. Already dict: {upper: [...], lower: [...]} → return as-is
+    2. List of points: [{type: "top1", ...}, ...] → convert to dict
+    3. Wrapped list: {points: [...]} → unwrap and convert
+    """
+    if not raw_points:
+        return {}
+    
+    # Already correct dict format
+    if isinstance(raw_points, dict) and "upper" in raw_points:
+        return raw_points
+    if isinstance(raw_points, dict) and "markers" in raw_points:
+        return raw_points
+    
+    # Unwrap {points: [...]} format
+    points_list = raw_points
+    if isinstance(raw_points, dict) and "points" in raw_points:
+        points_list = raw_points["points"]
+    
+    # If not a list, return as dict
+    if not isinstance(points_list, list):
+        return raw_points if isinstance(raw_points, dict) else {}
+    
+    # Convert list to dict based on pattern type and point types
+    result = {}
+    
+    # Group by point type
+    type_groups = {}
+    for p in points_list:
+        if isinstance(p, dict):
+            p_type = p.get("type", "unknown")
+            if p_type not in type_groups:
+                type_groups[p_type] = []
+            type_groups[p_type].append(p)
+    
+    # Pattern-specific conversion
+    if "double" in pattern_type:
+        # Double top/bottom: top1, top2, neckline OR bottom1, bottom2, neckline
+        if "top1" in type_groups:
+            result["peaks"] = [type_groups["top1"][0], type_groups.get("top2", [{}])[0]]
+        elif "bottom1" in type_groups:
+            result["peaks"] = [type_groups["bottom1"][0], type_groups.get("bottom2", [{}])[0]]
+        if "neckline" in type_groups:
+            result["neckline"] = type_groups["neckline"][0]
+            
+    elif "channel" in pattern_type:
+        # Channel: high_start, high_end, low_start, low_end
+        upper = []
+        lower = []
+        for p in points_list:
+            p_type = p.get("type", "")
+            if "high" in p_type:
+                upper.append(p)
+            elif "low" in p_type:
+                lower.append(p)
+        if upper:
+            result["upper"] = upper
+        if lower:
+            result["lower"] = lower
+            
+    elif "flag" in pattern_type or "pennant" in pattern_type:
+        # Flag: pole_start, pole_end, flag_end
+        pole = []
+        flag = []
+        for p in points_list:
+            p_type = p.get("type", "")
+            if "pole" in p_type:
+                pole.append(p)
+            elif "flag" in p_type:
+                flag.append(p)
+        if pole:
+            result["pole"] = pole
+        if flag:
+            result["flag_end"] = flag
+            
+    elif "compression" in pattern_type:
+        # Compression: start, end
+        if "start" in type_groups:
+            result["start"] = type_groups["start"][0]
+        if "end" in type_groups:
+            result["end"] = type_groups["end"][0]
+    
+    else:
+        # Generic: keep original structure
+        result = raw_points if isinstance(raw_points, dict) else {"points": points_list}
+    
+    return result
+
+
 def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert any pattern format to universal geometry contract.
     
     This is the SINGLE place where pattern-specific logic lives.
     Frontend NEVER needs to know pattern internals.
+    
+    HANDLES MULTIPLE INPUT FORMATS:
+    1. PatternCandidate with dict points: {upper: [...], lower: [...]}
+    2. DetectedPattern with list points: [{type: "top1", ...}, ...]
+    3. H&S detector with nested markers: {markers: {left_shoulder: {...}}}
     """
     if not pattern:
         return None
     
     pattern_type = pattern.get("type", "").lower()
-    points = pattern.get("points", {})
+    raw_points = pattern.get("points", {})
     anchor_points = pattern.get("anchor_points", {})
     breakout = pattern.get("breakout_level")
     invalidation = pattern.get("invalidation")
     
     geometry = PatternGeometry()
     
+    # =====================================================
+    # HELPER: Convert list-based points to dict format
+    # =====================================================
+    points = _normalize_points_format(raw_points, pattern_type)
+    
     # ===========================================
     # TRIANGLES
     # ===========================================
     if "triangle" in pattern_type:
         # Upper line (resistance or descending trendline)
-        if "upper" in points:
+        if "upper" in points and len(points["upper"]) >= 2:
             upper_pts = points["upper"]
-            if len(upper_pts) >= 2:
-                kind = "resistance" if "ascending" in pattern_type else "resistance_falling"
-                geometry.segments.append(GeometrySegment(
-                    kind=kind,
-                    points=[{"time": p["time"], "price": p["value"]} for p in upper_pts],
-                    style="solid",
-                    color="#ef4444" if "descending" in pattern_type else "#64748b"
-                ))
+            kind = "resistance" if "ascending" in pattern_type else "resistance_falling"
+            geometry.segments.append(GeometrySegment(
+                kind=kind,
+                points=[_to_point(p) for p in upper_pts],
+                style="solid",
+                color="#ef4444" if "descending" in pattern_type else "#64748b"
+            ))
         
         # Lower line (support or ascending trendline)
-        if "lower" in points:
+        if "lower" in points and len(points["lower"]) >= 2:
             lower_pts = points["lower"]
-            if len(lower_pts) >= 2:
-                kind = "support_rising" if "ascending" in pattern_type else "support"
-                geometry.segments.append(GeometrySegment(
-                    kind=kind,
-                    points=[{"time": p["time"], "price": p["value"]} for p in lower_pts],
-                    style="solid",
-                    color="#16a34a" if "ascending" in pattern_type else "#64748b"
-                ))
+            kind = "support_rising" if "ascending" in pattern_type else "support"
+            geometry.segments.append(GeometrySegment(
+                kind=kind,
+                points=[_to_point(p) for p in lower_pts],
+                style="solid",
+                color="#16a34a" if "ascending" in pattern_type else "#64748b"
+            ))
         
         # Anchor markers
         for side, anchors in anchor_points.items():
-            for i, a in enumerate(anchors):
-                geometry.markers.append(GeometryMarker(
-                    kind="anchor",
-                    time=a["time"],
-                    price=a["value"],
-                    label=f"{side[0].upper()}{i+1}"  # U1, U2, L1, L2
-                ))
+            if isinstance(anchors, list):
+                for i, a in enumerate(anchors):
+                    geometry.markers.append(GeometryMarker(
+                        kind="anchor",
+                        time=_get_time(a),
+                        price=_get_price(a),
+                        label=f"{side[0].upper()}{i+1}"
+                    ))
     
     # ===========================================
     # CHANNELS (ascending, descending, horizontal)
     # ===========================================
     elif "channel" in pattern_type:
-        if "upper" in points:
+        if "upper" in points and len(points["upper"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="upper_channel",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["upper"]],
+                points=[_to_point(p) for p in points["upper"]],
                 style="solid",
                 color="#ef4444"
             ))
-        if "lower" in points:
+        if "lower" in points and len(points["lower"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="lower_channel",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["lower"]],
+                points=[_to_point(p) for p in points["lower"]],
                 style="solid",
                 color="#16a34a"
             ))
     
     # ===========================================
-    # HEAD & SHOULDERS
+    # HEAD & SHOULDERS (handles nested markers)
     # ===========================================
     elif "head" in pattern_type and "shoulder" in pattern_type:
-        # Neckline
-        if "neckline" in points:
+        is_inverse = "inverse" in pattern_type
+        
+        # Build neckline from upper/lower points
+        neckline_key = "upper" if is_inverse else "lower"
+        if neckline_key in points and len(points[neckline_key]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="neckline",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["neckline"]],
+                points=[_to_point(p) for p in points[neckline_key]],
                 style="dashed",
                 color="#f59e0b"
             ))
         
-        # Shoulders and head markers
+        # Handle nested markers format: points.markers.left_shoulder
+        markers_data = points.get("markers", {})
+        if isinstance(markers_data, dict):
+            for key in ["left_shoulder", "head", "right_shoulder"]:
+                if key in markers_data:
+                    p = markers_data[key]
+                    geometry.markers.append(GeometryMarker(
+                        kind=key,
+                        time=_get_time(p),
+                        price=_get_price(p),
+                        label=key.replace("_", " ").title()
+                    ))
+        
+        # Also check flat format: points.left_shoulder
         for key in ["left_shoulder", "head", "right_shoulder"]:
-            if key in points:
+            if key in points and key not in (markers_data or {}):
                 p = points[key]
                 geometry.markers.append(GeometryMarker(
                     kind=key,
-                    time=p["time"],
-                    price=p["value"],
+                    time=_get_time(p),
+                    price=_get_price(p),
                     label=key.replace("_", " ").title()
                 ))
     
@@ -224,42 +366,72 @@ def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
     # DOUBLE TOP / BOTTOM
     # ===========================================
     elif "double" in pattern_type:
-        if "peaks" in points or "peak1" in points:
-            peaks = points.get("peaks", [])
-            if not peaks and "peak1" in points:
-                peaks = [points["peak1"], points.get("peak2")]
-            for i, p in enumerate(peaks):
-                if p:
-                    geometry.markers.append(GeometryMarker(
-                        kind="peak" if "top" in pattern_type else "trough",
-                        time=p["time"],
-                        price=p["value"],
-                        label=f"{'T' if 'top' in pattern_type else 'B'}{i+1}"
-                    ))
+        is_top = "top" in pattern_type
+        marker_kind = "peak" if is_top else "trough"
+        label_prefix = "T" if is_top else "B"
         
+        # Handle various peak formats
+        peaks = []
+        if "peaks" in points:
+            peaks = points["peaks"]
+        elif "top1" in points or "bottom1" in points:
+            key1 = "top1" if is_top else "bottom1"
+            key2 = "top2" if is_top else "bottom2"
+            peaks = [points.get(key1), points.get(key2)]
+        elif "peak1" in points:
+            peaks = [points.get("peak1"), points.get("peak2")]
+        
+        for i, p in enumerate(peaks):
+            if p:
+                geometry.markers.append(GeometryMarker(
+                    kind=marker_kind,
+                    time=_get_time(p),
+                    price=_get_price(p),
+                    label=f"{label_prefix}{i+1}"
+                ))
+        
+        # Neckline
         if "neckline" in points:
-            geometry.segments.append(GeometrySegment(
-                kind="neckline",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["neckline"]],
-                style="dashed",
-                color="#f59e0b"
-            ))
+            neckline_data = points["neckline"]
+            if isinstance(neckline_data, list) and len(neckline_data) >= 2:
+                geometry.segments.append(GeometrySegment(
+                    kind="neckline",
+                    points=[_to_point(p) for p in neckline_data],
+                    style="dashed",
+                    color="#f59e0b"
+                ))
+            elif isinstance(neckline_data, dict):
+                # Single neckline point - create horizontal line
+                neckline_price = _get_price(neckline_data)
+                neckline_time = _get_time(neckline_data)
+                if neckline_price and peaks:
+                    first_time = _get_time(peaks[0]) if peaks[0] else neckline_time
+                    last_time = _get_time(peaks[-1]) if peaks[-1] else neckline_time
+                    geometry.segments.append(GeometrySegment(
+                        kind="neckline",
+                        points=[
+                            {"time": first_time, "price": neckline_price},
+                            {"time": last_time, "price": neckline_price}
+                        ],
+                        style="dashed",
+                        color="#f59e0b"
+                    ))
     
     # ===========================================
     # WEDGE (rising, falling)
     # ===========================================
     elif "wedge" in pattern_type:
-        if "upper" in points:
+        if "upper" in points and isinstance(points["upper"], list) and len(points["upper"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="trendline_upper",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["upper"]],
+                points=[_to_point(p) for p in points["upper"]],
                 style="solid",
                 color="#ef4444"
             ))
-        if "lower" in points:
+        if "lower" in points and isinstance(points["lower"], list) and len(points["lower"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="trendline_lower",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["lower"]],
+                points=[_to_point(p) for p in points["lower"]],
                 style="solid",
                 color="#16a34a"
             ))
@@ -268,52 +440,108 @@ def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
     # FLAG / PENNANT
     # ===========================================
     elif "flag" in pattern_type or "pennant" in pattern_type:
-        if "pole" in points:
+        # Pole
+        if "pole" in points and isinstance(points["pole"], list) and len(points["pole"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="pole",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["pole"]],
+                points=[_to_point(p) for p in points["pole"]],
                 style="solid",
                 color="#3b82f6"
             ))
-        if "flag_upper" in points:
+        
+        # Flag boundaries (if available)
+        if "flag_upper" in points and isinstance(points["flag_upper"], list):
             geometry.segments.append(GeometrySegment(
                 kind="flag_upper",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["flag_upper"]],
-                style="solid"
+                points=[_to_point(p) for p in points["flag_upper"]],
+                style="solid",
+                color="#64748b"
             ))
-        if "flag_lower" in points:
+        if "flag_lower" in points and isinstance(points["flag_lower"], list):
             geometry.segments.append(GeometrySegment(
                 kind="flag_lower",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["flag_lower"]],
-                style="solid"
+                points=[_to_point(p) for p in points["flag_lower"]],
+                style="solid",
+                color="#64748b"
+            ))
+        
+        # If pole points from list format
+        if "pole" not in points and len(points.get("points", [])) >= 2:
+            pole_points = [p for p in points.get("points", []) if "pole" in p.get("type", "")]
+            if len(pole_points) >= 2:
+                geometry.segments.append(GeometrySegment(
+                    kind="pole",
+                    points=[_to_point(p) for p in pole_points],
+                    style="solid",
+                    color="#3b82f6"
+                ))
+    
+    # ===========================================
+    # COMPRESSION / SQUEEZE
+    # ===========================================
+    elif "compression" in pattern_type or "squeeze" in pattern_type:
+        # Add zone for compression area
+        start_pt = points.get("start")
+        end_pt = points.get("end")
+        if start_pt and end_pt:
+            # Get price range from breakout/invalidation or estimate
+            price_top = breakout or _get_price(end_pt) * 1.02
+            price_bottom = invalidation or _get_price(end_pt) * 0.98
+            geometry.zones.append(GeometryZone(
+                kind="consolidation",
+                time_start=_get_time(start_pt),
+                time_end=_get_time(end_pt),
+                price_top=price_top,
+                price_bottom=price_bottom,
+                opacity=0.1,
+                color="#64748b"
             ))
     
     # ===========================================
-    # RANGE / RECTANGLE
+    # RANGE / RECTANGLE  
     # ===========================================
     elif "range" in pattern_type or "rectangle" in pattern_type:
-        if "resistance" in points:
+        # Upper boundary
+        if "upper" in points and isinstance(points["upper"], list) and len(points["upper"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="resistance",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["resistance"]],
+                points=[_to_point(p) for p in points["upper"]],
                 style="solid",
                 color="#ef4444"
             ))
-        if "support" in points:
+        elif "resistance" in points and isinstance(points["resistance"], list):
+            geometry.segments.append(GeometrySegment(
+                kind="resistance",
+                points=[_to_point(p) for p in points["resistance"]],
+                style="solid",
+                color="#ef4444"
+            ))
+        
+        # Lower boundary
+        if "lower" in points and isinstance(points["lower"], list) and len(points["lower"]) >= 2:
             geometry.segments.append(GeometrySegment(
                 kind="support",
-                points=[{"time": p["time"], "price": p["value"]} for p in points["support"]],
+                points=[_to_point(p) for p in points["lower"]],
+                style="solid",
+                color="#16a34a"
+            ))
+        elif "support" in points and isinstance(points["support"], list):
+            geometry.segments.append(GeometrySegment(
+                kind="support",
+                points=[_to_point(p) for p in points["support"]],
                 style="solid",
                 color="#16a34a"
             ))
         
         # Add zone if we have both levels
         if breakout and invalidation:
-            # Get time range from points
             all_times = []
-            for pts in points.values():
+            for key, pts in points.items():
                 if isinstance(pts, list):
-                    all_times.extend([p.get("time", 0) for p in pts])
+                    for p in pts:
+                        t = _get_time(p)
+                        if t:
+                            all_times.append(t)
             if all_times:
                 geometry.zones.append(GeometryZone(
                     kind="pattern_area",
@@ -323,6 +551,20 @@ def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
                     price_bottom=min(breakout, invalidation),
                     opacity=0.08
                 ))
+    
+    # ===========================================
+    # BREAKOUT / BREAKDOWN
+    # ===========================================
+    elif "breakout" in pattern_type or "breakdown" in pattern_type:
+        # Simple marker at breakout point
+        level_price = points.get("level") or breakout
+        if level_price:
+            geometry.markers.append(GeometryMarker(
+                kind="breakout_point",
+                time=_get_time(points) if isinstance(points, dict) else 0,
+                price=level_price if isinstance(level_price, (int, float)) else _get_price({"price": level_price}),
+                label="Breakout" if "up" in pattern_type else "Breakdown"
+            ))
     
     # ===========================================
     # COMMON: LEVELS (breakout, invalidation)
@@ -355,7 +597,9 @@ def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
         "ascending_channel": "Ascending Channel",
         "descending_channel": "Descending Channel",
         "horizontal_channel": "Horizontal Channel",
+        "head_shoulders": "Head & Shoulders",
         "head_and_shoulders": "Head & Shoulders",
+        "inverse_head_shoulders": "Inverse Head & Shoulders",
         "inverse_head_and_shoulders": "Inverse Head & Shoulders",
         "double_top": "Double Top",
         "double_bottom": "Double Bottom",
@@ -368,6 +612,10 @@ def normalize_pattern_geometry(pattern: Dict[str, Any]) -> Dict[str, Any]:
         "pennant": "Pennant",
         "range": "Trading Range",
         "rectangle": "Rectangle",
+        "compression": "Compression",
+        "squeeze": "Squeeze",
+        "breakout_up": "Breakout Up",
+        "breakdown": "Breakdown",
     }
     
     return {
