@@ -1695,6 +1695,8 @@ const ResearchView = () => {
             }
             // Pattern Engine V2 - use primary_pattern from API
             patternV2={{ primary_pattern: setupData?.primary_pattern, alternative_patterns: setupData?.alternative_patterns }}
+            // Pattern Geometry - NORMALIZED geometry contract for rendering
+            patternGeometry={setupData?.pattern_geometry}
             // Fibonacci - use from per-TF pipeline
             fibonacci={fib || setupData?.fibonacci}
             // Toggle overlays visibility via buttons

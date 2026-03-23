@@ -6,66 +6,92 @@
 **Главная задача (2026-03-23):** 
 Pattern Geometry Normalization — создать единый универсальный визуальный контракт для ВСЕХ паттернов.
 
-Проблема была не в knowledge layer, а в render layer:
-- Backend знает фигуры логически, но отдавал geometry в разных форматах
-- Frontend не мог стабильно рисовать из-за отсутствия единого стандарта
+**Решённые проблемы:**
+1. Backend не отдавал geometry → FIXED (geometry contract)
+2. Backend отдавал geometry в разных форматах → FIXED (normalize_pattern_geometry)
+3. Frontend не читал geometry → FIXED (patternGeometry prop + renderPatternGeometry)
 
 ## Solution Implemented
 
 ### Pattern Geometry Contract
-Backend теперь отдает ЛЮБУЮ фигуру в одном формате:
+Backend отдаёт ЛЮБУЮ фигуру в едином формате:
 ```json
 {
-  "type": "pattern_type",
-  "label": "Human Readable Label", 
-  "direction": "bullish|bearish|neutral",
+  "type": "ascending_triangle",
+  "label": "Ascending Triangle", 
+  "direction": "bullish",
   "confidence": 0.85,
   "status": "active",
   "geometry": {
-    "segments": [],
-    "levels": [],
+    "segments": [
+      {"kind": "resistance", "points": [...], "color": "#64748b"},
+      {"kind": "support_rising", "points": [...], "color": "#16a34a"}
+    ],
+    "levels": [
+      {"kind": "breakout", "price": 73968.0},
+      {"kind": "invalidation", "price": 70236.02}
+    ],
     "zones": [],
-    "markers": []
+    "markers": [...]
   }
 }
 ```
 
-Frontend рисует ТОЛЬКО примитивы без знания бизнес-логики паттернов.
+Frontend рисует ТОЛЬКО примитивы:
+- segments → LineSeries
+- levels → PriceLine
+- zones → AreaSeries
+- markers → setMarkers
 
-## Architecture
+## Architecture (WORKING)
 
 ```
 Backend Pipeline:
-Coinbase Data → per_tf_builder → pattern_detectors_unified → pattern_selector → normalize_pattern_geometry() → render_plan_v2
+Coinbase Data → per_tf_builder → pattern_detectors_unified → pattern_selector 
+  → normalize_pattern_geometry() → pattern_geometry (JSON)
 
 Frontend Pipeline:  
-ResearchViewNew → ResearchChart (lightweight-charts) → PatternGeometryRenderer (renders primitives only)
+ResearchViewNew:
+  - setupData?.pattern_geometry → patternGeometry prop
+  
+ResearchChart:
+  - renderPatternGeometry(chart, patternGeometry, priceSeries, candles)
+  
+PatternGeometryRenderer:
+  - segments → chart.addSeries(LineSeries)
+  - levels → priceSeries.createPriceLine()
+  - markers → priceSeries.setMarkers()
 ```
 
-## What Was Implemented (March 23, 2026)
+## What Was Fixed (March 23, 2026)
 
-### 1. Pattern Geometry Contract Fixes
-**File:** `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py`
+### 1. Backend: pattern_geometry_contract.py
+- Added `_get_time()`, `_get_price()`, `_to_point()` helpers
+- Added `_normalize_points_format()` for LIST→DICT conversion
+- Fixed H&S nested markers format
+- Fixed Double patterns LIST conversion
+- Fixed Channel patterns LIST conversion
+- Fixed Flag patterns pole/boundary rendering
+- Added Compression zone rendering
+- Added Breakout marker rendering
 
-Added helper functions:
-- `_get_time(p)` - Extract time from any point format
-- `_get_price(p)` - Extract price from any point format
-- `_to_point(p)` - Convert to standard {time, price}
-- `_normalize_points_format()` - Convert LIST to DICT format
+### 2. Frontend: Data Flow Fix
+**ResearchViewNew.jsx:**
+```javascript
+patternGeometry={setupData?.pattern_geometry}
+```
 
-Fixed pattern handlers:
-- H&S: Now handles nested `points.markers.left_shoulder` format
-- Double Top/Bottom: Converts LIST `[{type: "top1"}, ...]` to DICT
-- Channels: Converts LIST `[{type: "high_start"}, ...]` to DICT
-- Flags: Added pole and flag boundary segment rendering
-- Compression: Added zone rendering
-- Breakout/Breakdown: Added marker rendering
+**ResearchChart.jsx:**
+```javascript
+const geometryToRender = patternGeometry || patternV2?.primary_pattern;
+if (geometryToRender?.geometry && showPatternOverlay) {
+  renderPatternGeometry(chart, geometryToRender, priceSeries, candles);
+}
+```
 
-### 2. Audit Matrix Created
-**File:** `/app/backend/modules/ta_engine/PATTERN_AUDIT.md`
-
-| Pattern Family | Registered | Detectable | Normalized | Renderable |
-|----------------|------------|------------|------------|------------|
+### 3. Audit Results
+| Pattern Family | Registered | Detector | Normalized | Renderable |
+|----------------|------------|----------|------------|------------|
 | Triangles (3) | YES | YES | YES ✅ | YES ✅ |
 | H&S (2) | YES | YES | YES ✅ | YES ✅ |
 | Channels (3) | YES | YES | YES ✅ | YES ✅ |
@@ -75,57 +101,50 @@ Fixed pattern handlers:
 | Range (1) | YES | YES | YES ✅ | YES ✅ |
 | Compression (1) | YES | YES | YES ✅ | YES ✅ |
 | Breakout (2) | YES | YES | YES ✅ | YES ✅ |
-| Harmonic (12) | YES | NO | NO | NO |
-| Candlestick (18) | YES | NO | NO | NO |
-| Complex (8) | YES | NO | NO | NO |
 
-**18 patterns fully normalized and renderable**
-**38 patterns registry-only (no detector)**
-
-## Tech Stack
-- **Backend:** Python FastAPI, MongoDB
-- **Frontend:** React 19, lightweight-charts, styled-components
-- **Data Provider:** Coinbase
+**18 patterns fully normalized and renderable!**
 
 ## Key Files
 
 ### Backend
-- `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py` - Universal geometry normalizer
-- `/app/backend/modules/ta_engine/setup/pattern_detectors_unified.py` - 9 pattern detectors
-- `/app/backend/modules/ta_engine/setup/pattern_selector.py` - Pattern selection with scoring
-- `/app/backend/modules/ta_engine/per_tf_builder.py` - Main TA pipeline
-- `/app/backend/modules/ta_engine/PATTERN_AUDIT.md` - Audit results
+- `/app/backend/modules/ta_engine/patterns/pattern_geometry_contract.py` - Universal normalizer
+- `/app/backend/modules/ta_engine/setup/pattern_detectors_unified.py` - 9 detectors
+- `/app/backend/modules/ta_engine/PATTERN_AUDIT.md` - Audit matrix
 
 ### Frontend
-- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx` - Main chart
-- `/app/frontend/src/modules/cockpit/components/PatternGeometryRenderer.jsx` - Primitive renderer
+- `/app/frontend/src/modules/cockpit/views/ResearchViewNew.jsx` - Passes patternGeometry
+- `/app/frontend/src/modules/cockpit/components/ResearchChart.jsx` - Calls renderer
+- `/app/frontend/src/modules/cockpit/components/PatternGeometryRenderer.jsx` - Draws primitives
 
-## API Endpoints
+## API Response Structure
 ```
-GET /api/ta-engine/status
-GET /api/ta-engine/mtf/{symbol}?timeframes=4H,1D
-GET /api/ta-engine/registry/patterns
+GET /api/ta-engine/mtf/BTC?timeframes=4H
+
+{
+  "tf_map": {
+    "4H": {
+      "primary_pattern": {...},      // Legacy format
+      "pattern_geometry": {...},     // NORMALIZED format ← USE THIS
+      "alternative_patterns": [...]
+    }
+  }
+}
 ```
 
-## User Personas
-1. **Trader** - Uses TA for pattern identification
-2. **Analyst** - Reviews pattern accuracy
-3. **Developer** - Extends pattern detection
-
-## Backlog (P0/P1/P2)
+## Backlog
 
 ### P0 - Done ✅
-- [x] Pattern Geometry Contract audit
-- [x] Fix all 9 detector normalizations
-- [x] Verify rendering on frontend
+- [x] Pattern Geometry Contract
+- [x] Normalize all 9 detectors
+- [x] Frontend rendering fix
+- [x] E2E verification
 
 ### P1 - Next
 - [ ] Add detectors for triple_top/triple_bottom
-- [ ] Test on multiple assets (ETH, SOL)
-- [ ] Add pattern history tracking
+- [ ] Test on ETH, SOL
+- [ ] Pattern history tracking
 
 ### P2 - Future
-- [ ] Harmonic pattern detectors
-- [ ] Candlestick pattern detectors
-- [ ] Complex pattern detectors (Elliott)
-- [ ] Machine learning pattern recognition
+- [ ] Harmonic patterns (12)
+- [ ] Candlestick patterns (18)
+- [ ] Complex patterns (8)

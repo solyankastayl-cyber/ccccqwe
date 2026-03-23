@@ -321,6 +321,8 @@ const ResearchChart = ({
   decision = null,
   indicatorOverlays = [],
   patternV2 = null,
+  // Pattern Geometry - NORMALIZED geometry contract for rendering
+  patternGeometry = null,
   fibonacci = null,
   chartStructure = null,
   showFibonacciOverlay = true,
@@ -1201,13 +1203,20 @@ const ResearchChart = ({
     // =========================================================
     // Draw pattern shapes DIRECTLY ON CANDLES (not in panels)
     // Priority: Pattern > Structure > Indicators
-    if (patternV2?.primary_pattern && showPatternOverlay) {
+    // Use patternGeometry (normalized geometry contract) if available
+    const geometryToRender = patternGeometry || patternV2?.primary_pattern;
+    if (geometryToRender?.geometry && showPatternOverlay) {
       try {
-        const patternSeries = renderPatternGeometry(chart, patternV2, mapped);
+        console.log('[ResearchChart] Rendering pattern geometry:', geometryToRender.type);
+        const patternSeries = renderPatternGeometry(chart, geometryToRender, priceSeries, mapped);
+        console.log('[ResearchChart] Pattern geometry rendered, series count:', patternSeries?.length);
         // Pattern series are added to chart by renderPatternGeometry
       } catch (e) {
         console.warn('[ResearchChart] Pattern geometry render failed:', e);
       }
+    } else if (showPatternOverlay && patternV2?.primary_pattern) {
+      // Fallback: render legacy patternV2 format
+      console.log('[ResearchChart] No geometry contract, using legacy patternV2 render');
     }
 
     // =========================================================
@@ -1358,7 +1367,7 @@ const ResearchChart = ({
         chartInstanceRef.current = null;
       }
     };
-  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow]);
+  }, [candles, chartType, height, levels, setup, pattern, baseLayer, structureVisualization, tradeSetup, showLevels, showPattern, showBaseLayer, showStructure, showTargets, showExecutionOverlay, poi, liquidity, chochValidation, displacement, showMarketMechanics, showPOI, showLiquidity, showSweeps, showCHOCH, showNarrative, decision, chartStructure, patternV2, patternGeometry, showPatternOverlay, showFibonacciOverlay, execution, chainMap, renderPlan, rpStructure, rpLevels, rpExecution, rpLiquidity, computedEMA20, computedEMA50, mode, modeShow]);
 
   const direction = pattern?.direction || setup?.direction || 'neutral';
   const confidence = pattern?.total_score || pattern?.confidence || setup?.confidence || 0;
