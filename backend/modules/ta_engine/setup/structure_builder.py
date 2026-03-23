@@ -25,13 +25,16 @@ class StructureBuilder:
     """
     
     # TF-specific configuration
+    # 1M/6M are proper TA names, 30D/180D are legacy aliases
     TF_CONFIG = {
         "1H":   {"min_move": 0.010, "min_span": 15,  "touch_tolerance": 0.008},
         "4H":   {"min_move": 0.015, "min_span": 20,  "touch_tolerance": 0.010},
         "1D":   {"min_move": 0.030, "min_span": 30,  "touch_tolerance": 0.012},
         "7D":   {"min_move": 0.050, "min_span": 40,  "touch_tolerance": 0.015},
-        "30D":  {"min_move": 0.080, "min_span": 60,  "touch_tolerance": 0.020},
-        "180D": {"min_move": 0.120, "min_span": 80,  "touch_tolerance": 0.025},
+        "1M":   {"min_move": 0.080, "min_span": 60,  "touch_tolerance": 0.020},  # Monthly
+        "30D":  {"min_move": 0.080, "min_span": 60,  "touch_tolerance": 0.020},  # Legacy alias
+        "6M":   {"min_move": 0.120, "min_span": 80,  "touch_tolerance": 0.025},  # Semi-annual
+        "180D": {"min_move": 0.120, "min_span": 80,  "touch_tolerance": 0.025},  # Legacy alias
         "1Y":   {"min_move": 0.200, "min_span": 120, "touch_tolerance": 0.030},
     }
     

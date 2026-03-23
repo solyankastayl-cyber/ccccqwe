@@ -134,21 +134,41 @@ TF_CONFIG = {
         "candle_type": "7d",
         "description": "Weekly formations"
     },
-    "30D": {
+    # 1M - Monthly (proper TA name)
+    "1M": {
         "lookback": 42,         # ~42 monthly candles = ~3.5 years
         "pivot_window": 2,      # Very small for monthly
         "min_pivot_distance": 1,
         "pattern_window": 30,
-        "candle_type": "30d",
+        "candle_type": "1M",
         "description": "Monthly structure"
     },
-    "180D": {
+    # 30D - Legacy alias for 1M
+    "30D": {
+        "lookback": 42,         # Same as 1M
+        "pivot_window": 2,
+        "min_pivot_distance": 1,
+        "pattern_window": 30,
+        "candle_type": "30d",
+        "description": "Monthly structure (legacy)"
+    },
+    # 6M - Semi-annual (proper TA name)
+    "6M": {
         "lookback": 12,         # ~12 half-year candles = ~6 years
         "pivot_window": 1,      # Minimal for 6-month
         "min_pivot_distance": 1,
         "pattern_window": 10,
-        "candle_type": "180d",
+        "candle_type": "6M",
         "description": "Macro cycles"
+    },
+    # 180D - Legacy alias for 6M
+    "180D": {
+        "lookback": 12,         # Same as 6M
+        "pivot_window": 1,
+        "min_pivot_distance": 1,
+        "pattern_window": 10,
+        "candle_type": "180d",
+        "description": "Macro cycles (legacy)"
     },
     "1Y": {
         "lookback": 11,         # ~11 yearly candles = ~11 years

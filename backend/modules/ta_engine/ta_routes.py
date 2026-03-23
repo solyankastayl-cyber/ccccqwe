@@ -226,16 +226,24 @@ async def get_mtf_analysis(
         # Build per-timeframe data
         tf_map = {}
         
+        # TF normalization (1M/6M are proper TA names, 30D/180D are legacy)
+        tf_normalize = {
+            "1M": "1M", "30D": "1M",   # Monthly
+            "6M": "6M", "180D": "6M",  # Semi-annual
+        }
+        
         # TF to candle type mapping
         # Note: Coinbase doesn't support 4h, using 6h instead
-        # For higher TFs (7D, 30D, 180D, 1Y) we aggregate from daily candles
+        # For higher TFs (7D, 1M, 6M, 1Y) we aggregate from daily candles
         tf_candle_map = {
             "1H": "1h",
             "4H": "6h",
             "1D": "1d",
             "7D": "1d",      # Aggregate to weekly
-            "30D": "1d",     # Aggregate to monthly
-            "180D": "1d",    # Aggregate to 6-month
+            "1M": "1d",      # Aggregate to monthly (was 30D)
+            "30D": "1d",     # Legacy alias for 1M
+            "6M": "1d",      # Aggregate to 6-month (was 180D)
+            "180D": "1d",    # Legacy alias for 6M
             "1Y": "1d",      # Aggregate to yearly
         }
         
@@ -245,16 +253,20 @@ async def get_mtf_analysis(
             "4H": 200,
             "1D": 150,
             "7D": 400,       # 400 days -> ~57 weekly candles
-            "30D": 1200,     # 1200 days -> ~40 monthly candles
-            "180D": 2000,    # 2000 days -> ~11 six-month candles
+            "1M": 1200,      # 1200 days -> ~40 monthly candles
+            "30D": 1200,     # Legacy alias
+            "6M": 2000,      # 2000 days -> ~11 six-month candles
+            "180D": 2000,    # Legacy alias
             "1Y": 3650,      # ~10 years of data -> ~10 yearly candles
         }
         
         # Aggregation periods (in days) for higher timeframes
         tf_aggregation = {
             "7D": 7,
-            "30D": 30,
-            "180D": 180,
+            "1M": 30,        # Monthly (was 30D)
+            "30D": 30,       # Legacy alias
+            "6M": 180,       # Semi-annual (was 180D)
+            "180D": 180,     # Legacy alias
             "1Y": 365,
         }
         

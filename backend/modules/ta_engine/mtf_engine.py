@@ -54,16 +54,22 @@ class MTFEngine:
     """
     
     # Timeframe classification
+    # 1M/6M are proper TA names, 30D/180D are legacy aliases
     TF_ROLES = {
         "4H": "ltf",
         "1D": "mtf",
         "7D": "mtf",
-        "1M": "htf",
-        "6M": "htf",
+        "1M": "htf",      # Monthly (proper name)
+        "30D": "htf",     # Legacy alias for 1M
+        "6M": "htf",      # Semi-annual (proper name)
+        "180D": "htf",    # Legacy alias for 6M
         "1Y": "htf",
-        # Legacy mappings (for backward compat)
-        "30D": "htf",  # Should use 1M
-        "180D": "htf",  # Should use 6M
+    }
+    
+    # TF normalization (legacy → proper)
+    TF_NORMALIZE = {
+        "30D": "1M",
+        "180D": "6M",
     }
     
     # HTF pattern threshold (only show very confident patterns)
