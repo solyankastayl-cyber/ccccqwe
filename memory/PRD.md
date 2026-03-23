@@ -1,95 +1,69 @@
-# Technical Analysis Module - PRD
+# FOMO Platform - Tech Analysis Module PRD
 
 ## Original Problem Statement
-Клонировать репозиторий, изучить архитектуру, работать ТОЛЬКО с модулем теханализа.
+Поднять проект FOMO из GitHub репозитория. Сфокусироваться на модуле Tech Analysis (теханализ).  
+Проблема: backend работает правильно, но frontend показывает "no trade / нет анализа" вместо осмысленного TA.
 
-## COMPLETED PHASES
+## Architecture
 
-### Phase 1: Pattern Geometry Contract ✅
-- Backend нормализует geometry в единый формат
-- Frontend рисует только примитивы
+### Backend (Python/FastAPI)
+- `/app/backend/modules/ta_engine/` - TA Engine module
+  - `interpretation/interpretation_engine.py` - Interpretation Layer (NEW)
+  - `mtf_engine.py` - Multi-Timeframe Engine
+  - `per_tf_builder.py` - Per-TF Builder
+  - `ta_routes.py` - API routes
 
-### Phase 2: Pattern Selection Engine v2.0 ✅
-- 7-этапный cascade filtering
-- Strict thresholds
+### Frontend (React)
+- `/app/frontend/src/modules/cockpit/views/ResearchViewNew.jsx` - Research View
 
-### Phase 3: Structure Builder v2 + Pattern Engine v3 ✅
-- TF-adaptive pivot filtering
-- Line fit + touch validation
+## User Personas
+1. **Trader/Researcher** - Uses TA module to analyze market structure
+2. **Technical Analyst** - Needs clear interpretation of patterns and trends
 
-### Phase 4: MTF Engine v2.0 ✅
-**Проблема:** Все TF обрабатывались одинаково → HTF без паттернов = "ошибка"
-**Решение:** Role-based анализ — каждый TF имеет свою роль
+## Core Requirements (Static)
+1. MTF Analysis with proper interpretation
+2. Human-readable TA language (not trading terminal language)
+3. Summary across timeframes (HTF/MTF/LTF)
+4. Clear TF naming (1M, 6M instead of 30D, 180D)
 
-## MTF Architecture (FINAL)
+## What's Been Implemented (March 2026)
 
-```
-TF Roles:
-- HTF (1M, 6M, 1Y, 30D, 180D) → CONTEXT (trend, regime, major levels)
-- MTF (1D, 7D) → PATTERNS (main TA layer)
-- LTF (4H) → DETAIL (local patterns, confirmation)
-```
+### Session 1 - Interpretation Layer
+- [x] Created InterpretationEngine class
+  - `_interpret_htf()` - Macro context interpretation
+  - `_interpret_mtf()` - Mid-term pattern interpretation  
+  - `_interpret_ltf()` - Local detail interpretation
+  - `build_one_line_summary()` - One-line MTF summary
+- [x] Integrated into MTF Engine and per_tf_builder
+- [x] Added summary_text to API response
+- [x] Frontend: MTF Summary Bar above chart
+- [x] Frontend: Per-TF interpretation panel
+- [x] Frontend: TF display names (30D→1M, 180D→6M)
+- [x] Replaced trading language with research language
 
-### Key Principle
-**NO PATTERN on HTF is NOT an error — it's valid.**
+## Prioritized Backlog
 
-HTF gives CONTEXT, not patterns.
+### P0 (Critical) - DONE
+- [x] Interpretation Layer
+- [x] MTF Summary Bar
+- [x] TF naming fix
 
-## API Response Example
+### P1 (High Priority)
+- [ ] Smart Highlight Layer (подсветка ключевых зон)
+- [ ] Hover explanation on chart
+- [ ] Visual Mapping Layer improvements
 
-```json
-{
-  "mtf_analysis": {
-    "summary": {
-      "one_line": "30D: Neutral · 7D: Falling Wedge · 4H: Ascending Triangle",
-      "macro_trend": "neutral",
-      "narrative": "Macro context is neutral. Mid-term shows falling wedge (bullish). Short-term shows local ascending triangle."
-    },
-    "analyses": {
-      "30D": {"role": "htf", "trend": "neutral", "pattern": null},
-      "7D": {"role": "mtf", "trend": "neutral", "pattern": "falling_wedge"},
-      "4H": {"role": "ltf", "trend": "neutral", "pattern": "ascending_triangle"}
-    }
-  }
-}
-```
+### P2 (Medium Priority)  
+- [ ] Indicator cards with click-to-show overlay
+- [ ] Pattern confidence visualization
+- [ ] Structure phase indicators
 
-## Key Files
+## Next Tasks
+1. Review and improve interpretation text quality
+2. Add Smart Highlight Layer for key zones
+3. Improve indicator toggle UX
 
-### Backend
-- `/app/backend/modules/ta_engine/mtf_engine.py` - MTF Engine v2.0
-- `/app/backend/modules/ta_engine/mtf/mtf_orchestrator.py` - Updated orchestrator
-- `/app/backend/modules/ta_engine/setup/structure_builder.py` - Structure Builder v2
-- `/app/backend/modules/ta_engine/setup/pattern_engine_v3.py` - Pattern Engine v3
-- `/app/backend/modules/ta_engine/setup/pattern_selector.py` - PSE v2.0
-
-## Testing Results
-
-```
-MTF ENGINE v2.0 ANALYSIS
-========================
-30D (HTF): trend=neutral, pattern=None → CONTEXT ONLY ✅
-7D (MTF): trend=neutral, pattern=falling_wedge → MAIN PATTERN ✅  
-4H (LTF): trend=neutral, pattern=ascending_triangle → LOCAL DETAIL ✅
-
-NARRATIVE: Macro context is neutral. Mid-term shows falling wedge (bullish). 
-Short-term shows local ascending triangle.
-```
-
-## Backlog
-
-### P0 - DONE ✅
-- [x] Pattern Geometry Contract
-- [x] PSE v2.0
-- [x] Structure Builder v2
-- [x] Pattern Engine v3
-- [x] MTF Engine v2.0 (role-based)
-
-### P1 - Next
-- [ ] Rename 30D→1M, 180D→6M in data provider
-- [ ] Add visual MTF summary on frontend
-- [ ] Test on ETH, SOL
-
-### P2 - Future
-- [ ] Harmonic patterns
-- [ ] Candlestick patterns
+## Tech Stack
+- Backend: Python 3.x, FastAPI, MongoDB
+- Frontend: React, styled-components
+- Chart: TradingView Lightweight Charts
